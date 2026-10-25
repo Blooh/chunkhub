@@ -47,6 +47,9 @@ public class ChunkHub implements ModInitializer {
 
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			ticks++;
+			if (ticks % (20 * 20) == 0 && ticks % SYNC_EVERY_TICKS != 0) {
+				for (ServerPlayer p : server.getPlayerList().getPlayers()) Sync.live(server, p);
+			}
 			if (ticks % SYNC_EVERY_TICKS == 0) {
 				for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 					if (Links.get(server, p.getUUID()) != null) Sync.sync(server, p, "timer", null);

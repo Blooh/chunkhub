@@ -96,6 +96,29 @@ final class Sync {
 	}
 
 	/** For players who just left or when the world closes: the game has already saved their files. */
+	private static final Map<UUID, String> LAST_LIVE = new ConcurrentHashMap<>();
+
+	/** Health, hunger, XP and inventories only, sent when they've changed since last time. */
+	static void live(MinecraftServer server, ServerPlayer p) {
+		Links.Link l = Links.get(server, p.getUUID());
+		if (l == null) return;
+		JsonObject extra = new JsonObject();
+		try {
+			extra.add("player", Snapshot.player(p));
+			JsonObject ender = Snapshot.enderFromPlayer(p);
+			if (ender != null) { ender.remove("seen"); extra.add("ender", ender); }
+		} catch (Throwable t) { return; }
+		JsonObject cmp = extra.deepCopy(); cmp.getAsJsonObject("player").remove("at");
+		String sig = cmp.toString();
+		if (sig.equals(LAST_LIVE.get(p.getUUID()))) return;
+		LAST_LIVE.put(p.getUUID(), sig);
+		if (extra.has("ender")) extra.getAsJsonObject("ender").addProperty("seen", System.currentTimeMillis());
+		JsonObject body = new JsonObject();
+		body.addProperty("token", l.token);
+		body.add("extra", extra);
+		post("/api/mod/sync", body);
+	}
+
 	static void syncOffline(MinecraftServer server, UUID id, String name, String reason, boolean wait) {
 		Links.Link l = Links.get(server, id);
 		if (l == null) return;

@@ -34,6 +34,8 @@ public class ChunkHubClient implements ClientModInitializer {
 	private static final int SYNC_EVERY_TICKS = 20 * 60 * 5; // five minutes
 	private static final int WAIT_FOR_STATS_TICKS = 60;       // give the server three seconds to answer
 	private static final int FIRST_SYNC_TICKS = 20 * 10;      // ten seconds after joining
+	private static final int LIVE_EVERY_TICKS = 20 * 20;      // check for inventory/health changes every 20 seconds
+	private String lastLive = "";
 
 	private long ticks = 0;
 	private long joinedAt = -1;
@@ -70,6 +72,7 @@ public class ChunkHubClient implements ClientModInitializer {
 			else if (joinedAt >= 0 && ticks > joinedAt && (ticks - joinedAt) % SYNC_EVERY_TICKS == 0) requestStats(mc, false);
 			if (ticks % 20 == 0) watchEnderChest(mc);
 			if (pendingUpload >= 0 && ticks >= pendingUpload) { pendingUpload = -1; upload(mc, key, notifyNext); notifyNext = false; }
+			if (ticks % LIVE_EVERY_TICKS == 0 && pendingUpload < 0) live(mc, key);
 		});
 	}
 
@@ -171,6 +174,24 @@ public class ChunkHubClient implements ClientModInitializer {
 		}
 		notifyNext = notifyNext || notify;
 		pendingUpload = ticks + WAIT_FOR_STATS_TICKS;
+	}
+
+	/** Sends just your health, hunger, XP and inventories, and only when they've changed. */
+	private void live(Minecraft mc, String key) {
+		ClientLinks.Link link = ClientLinks.get(key);
+		if (link == null || mc.player == null) return;
+		JsonObject extra = new JsonObject();
+		try { extra.add("player", Snapshot.player(mc.player)); } catch (Throwable t) { return; }
+		if (enderSnapshot != null) extra.add("ender", enderSnapshot);
+		JsonObject cmp = extra.deepCopy(); cmp.getAsJsonObject("player").remove("at");
+		String sig = cmp.toString();
+		if (sig.equals(lastLive)) return;
+		lastLive = sig;
+		extra.addProperty("source", "client");
+		JsonObject body = new JsonObject();
+		body.addProperty("token", link.token);
+		body.add("extra", extra);
+		Sync.post("/api/mod/sync", body);
 	}
 
 	private void upload(Minecraft mc, String key, boolean notify) {
