@@ -40,6 +40,7 @@ public class ChunkHubClient implements ClientModInitializer {
 	private long pendingUpload = -1; // tick at which to read and upload the stats we asked for
 	private boolean notifyNext = false;
 	private JsonObject lastPayload = null; // kept so we can still send something as you leave
+	private JsonObject enderSnapshot = null; // what was in your ender chest the last time you opened it here
 
 	@Override
 	public void onInitializeClient() {
@@ -53,7 +54,7 @@ public class ChunkHubClient implements ClientModInitializer {
 			.then(ClientCommands.literal("status").executes(c -> run(c.getSource(), "status", null)))
 			.then(ClientCommands.literal("unlink").executes(c -> run(c.getSource(), "unlink", null)))));
 
-		ClientPlayConnectionEvents.JOIN.register((listener, sender, mc) -> { joinedAt = ticks; lastPayload = null; });
+		ClientPlayConnectionEvents.JOIN.register((listener, sender, mc) -> { joinedAt = ticks; lastPayload = null; enderSnapshot = null; });
 		ClientPlayConnectionEvents.DISCONNECT.register((listener, mc) -> {
 			// send what we read most recently (the game clears your stats once you've left)
 			JsonObject p = lastPayload; lastPayload = null; joinedAt = -1; pendingUpload = -1;
@@ -67,6 +68,7 @@ public class ChunkHubClient implements ClientModInitializer {
 			if (key == null || ClientLinks.get(key) == null) return;
 			if (joinedAt >= 0 && ticks - joinedAt == FIRST_SYNC_TICKS) requestStats(mc, false);
 			else if (joinedAt >= 0 && ticks > joinedAt && (ticks - joinedAt) % SYNC_EVERY_TICKS == 0) requestStats(mc, false);
+			if (ticks % 20 == 0) watchEnderChest(mc);
 			if (pendingUpload >= 0 && ticks >= pendingUpload) { pendingUpload = -1; upload(mc, key, notifyNext); notifyNext = false; }
 		});
 	}
@@ -138,6 +140,20 @@ public class ChunkHubClient implements ClientModInitializer {
 		return 1;
 	}
 
+	/** Servers don't tell you what's in your ender chest until you open it, so remember it whenever it's open. */
+	private void watchEnderChest(Minecraft mc) {
+		Object screen = field(mc, "screen");
+		if (screen == null) return;
+		Object title = call(screen, "getTitle");
+		Object key = call(call(title, "getContents"), "getKey");
+		if (!"container.enderchest".equals(key)) return;
+		Object menu = call(screen, "getMenu");
+		Object slots = field(menu, "slots");
+		if (slots instanceof java.util.List<?> list && list.size() >= 27) {
+			try { enderSnapshot = Snapshot.enderFromSlots(mc.player, list); } catch (Throwable t) { ChunkHub.LOG.debug("Couldn't read the ender chest", t); }
+		}
+	}
+
 	// ---------------------------------------------------------------- reading stats
 
 	/** Same request the Statistics screen sends; the server answers with all of your statistics. */
@@ -169,6 +185,8 @@ public class ChunkHubClient implements ClientModInitializer {
 		if (stats != null) body.add("stats", stats);
 		if (adv != null) body.add("advancements", adv);
 		JsonObject extra = new JsonObject();
+		try { extra.add("player", Snapshot.player(mc.player)); } catch (Throwable t) { ChunkHub.LOG.warn("Couldn't read your inventory", t); }
+		if (enderSnapshot != null) extra.add("ender", enderSnapshot);
 		extra.addProperty("source", "client");
 		extra.addProperty("server", serverLabel(mc));
 		extra.addProperty("sent_at", System.currentTimeMillis());

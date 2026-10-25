@@ -86,6 +86,12 @@ final class Sync {
 		savePlayerFiles(p);
 		JsonObject body = payload(server, p.getUUID(), p.getName().getString(), l, reason);
 		if (body == null) { if (notify != null) tell(server, notify, "Couldn't find this world's stats files yet. Play for a minute and try again.", ChatFormatting.RED); return; }
+		try {
+			JsonObject extra = body.getAsJsonObject("extra");
+			extra.add("player", Snapshot.player(p));
+			JsonObject ender = Snapshot.enderFromPlayer(p);
+			if (ender != null) extra.add("ender", ender);
+		} catch (Throwable t) { ChunkHub.LOG.warn("Couldn't read the player's inventory", t); }
 		send(server, p.getUUID(), body, notify, false);
 	}
 
