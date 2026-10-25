@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "chunkhub",
+  "version": "${version}",
+  "name": "Chunk Hub Companion",
+  "description": "Links your world to chunkhub.net so your statistics and advancements show up on the World Stats page and your checklists. Use /chunkhub link CODE in game.",
+  "authors": ["Chunk Hub"],
+  "contact": { "homepage": "https://chunkhub.net" },
+  "license": "All-Rights-Reserved",
+  "icon": "assets/chunkhub/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["net.chunkhub.companion.ChunkHub"]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.0",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
