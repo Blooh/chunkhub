@@ -31,8 +31,13 @@ Other commands: `/chunkhub sync` (send now), `/chunkhub status`, `/chunkhub unli
 The link is saved inside the world folder (`chunkhub/<your uuid>.json`). If you share your world folder,
 delete that folder first, otherwise the other person's stats would go to your account.
 
-Works in single-player and on servers that have the mod installed (each player links themselves).
-On a server, the `/chunkhub` commands don't need operator permissions.
+Where it works:
+- **Single-player:** install it in your game.
+- **Any multiplayer server, even without the mod:** install it in your game, join the server and run `/chunkhub link CODE`.
+  The mod asks the server for your stats the same way the Statistics screen does, so the server needs nothing.
+  Links for servers are saved in `.minecraft/config/chunkhub/links.json`.
+- **A server with the mod installed:** every player's stats can sync, even players who don't have the mod.
+  The `/chunkhub` commands don't need operator permissions.
 
 ## Testing against a copy of the site
 

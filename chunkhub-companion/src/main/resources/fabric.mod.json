@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "chunkhub",
+  "version": "${version}",
+  "name": "Chunk Hub Companion",
+  "description": "Shows your stats on chunkhub.net (World Stats and checklists). Works in single-player, on servers with the mod, and on ANY server when installed in your game. Use /chunkhub link CODE.",
+  "authors": [
+    "Chunk Hub"
+  ],
+  "contact": {
+    "homepage": "https://chunkhub.net"
+  },
+  "license": "All-Rights-Reserved",
+  "icon": "assets/chunkhub/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.chunkhub.companion.ChunkHub"
+    ],
+    "client": [
+      "net.chunkhub.companion.ChunkHubClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
