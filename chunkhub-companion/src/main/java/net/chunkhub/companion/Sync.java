@@ -97,6 +97,22 @@ final class Sync {
 
 	/** For players who just left or when the world closes: the game has already saved their files. */
 	private static final Map<UUID, String> LAST_LIVE = new ConcurrentHashMap<>();
+	private static final Map<UUID, Boolean> PINGING = new ConcurrentHashMap<>();
+
+	/** Asks the website whether someone pressed Refresh for this player; if so, sends everything now. */
+	static void ping(MinecraftServer server, ServerPlayer p) {
+		Links.Link l = Links.get(server, p.getUUID());
+		if (l == null || PINGING.putIfAbsent(p.getUUID(), true) != null) return;
+		UUID id = p.getUUID();
+		JsonObject body = new JsonObject(); body.addProperty("token", l.token);
+		post("/api/mod/ping", body).thenAccept(res -> server.execute(() -> {
+			PINGING.remove(id);
+			if (res != null && res.has("refresh") && res.get("refresh").getAsBoolean()) {
+				ServerPlayer again = server.getPlayerList().getPlayer(id);
+				if (again != null) { LAST_LIVE.remove(id); sync(server, again, "refresh", null); }
+			}
+		}));
+	}
 
 	/** Health, hunger, XP and inventories only, sent when they've changed since last time. */
 	static void live(MinecraftServer server, ServerPlayer p) {

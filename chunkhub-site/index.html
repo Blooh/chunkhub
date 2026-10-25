@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chunk Hub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@900&family=Carlito:wght@400;700&display=swap">
+<style>
+/* Layout: one centred column. Slim site header, a short intro, four tool cards in a 2×2 grid (one column on phones), then a grid of smaller tool links (stacked on phones), a footer. */
+:root {
+  --bg: #e9ecef;
+  --panel: #f7f8f9;
+  --panel-2: #eef1f3;
+  --line: #d3d9de;
+  --fg: #1b2228;
+  --muted: #5d6973;
+  --accent: #b3261e;      /* redstone */
+  --accent-fg: #ffffff;
+  --ok: #2f7d4f;
+  --chip: #ffffff;
+  --shadow: 0 1px 2px rgba(20,30,40,.08), 0 6px 24px rgba(20,30,40,.10);
+  --f-display: "CH Display", "Franklin Gothic Heavy", "Libre Franklin", "Arial Black", sans-serif;
+  --f-body: Calibri, "Carlito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: Calibri, "Carlito", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1418; --panel: #161c21; --panel-2: #1d252b; --line: #2b353d; --fg: #e3e8ec; --muted: #8d9aa4;
+  --accent: #e2574c; --accent-fg: #1a0705; --ok: #5cc287; --chip: #1f282f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1418; --panel: #161c21; --panel-2: #1d252b; --line: #2b353d; --fg: #e3e8ec; --muted: #8d9aa4;
+  --accent: #e2574c; --accent-fg: #1a0705; --ok: #5cc287; --chip: #1f282f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark; }
+
+
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 16px; line-height: 1.5; margin: 0; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.site-head { height: var(--head-h); display: flex; align-items: center; gap: 18px; background: var(--panel); border-bottom: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+.site-head .home { font-family: var(--f-display); font-size: 15px; text-decoration: none; white-space: nowrap; }
+.site-head .home span { color: var(--accent); }
+.site-head nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; }
+.site-head nav a { color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 6px; white-space: nowrap; font-weight: 600; font-size: 14px; }
+.site-head nav a:hover { color: var(--fg); background: var(--panel-2); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.intro { padding-block: 56px 32px; display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.intro h1 { font-family: var(--f-display); font-weight: 900; font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.intro h1 span { color: var(--accent); }
+.intro p { margin: 0; color: var(--muted); font-size: 18px; max-width: 60ch; }
+.tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding-bottom: 48px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
+.card:hover { border-color: var(--muted); transform: translateY(-2px); }
+.card .art { background: #2a3138; height: 180px; position: relative; overflow: hidden; }
+.card .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.card .body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.card h2 { margin: 0; font-size: 22px; font-weight: 700; }
+.card p { margin: 0; color: var(--muted); }
+.card ul { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.card li { font-size: 13px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; color: var(--muted); }
+.card .go { margin-top: auto; padding-top: 10px; font-weight: 700; color: var(--accent); }
+footer { border-top: 1px solid var(--line); padding-block: 20px 28px; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between; }
+@media (max-width: 640px) { .tools { grid-template-columns: 1fr; } .intro { padding-block: 36px 24px; } }
+
+/* Ad slots: fixed-size boxes so pages don't jump when an ad loads. Replace the placeholder inside with the ad network's code. */
+.ad-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-inline: auto; }
+.ad-slot .ad-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ad-slot .ad-box { width: 100%; display: grid; place-items: center; background: var(--panel-2); border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; overflow: hidden; }
+.ad-rect .ad-box { width: 300px; max-width: 100%; height: 250px; }
+.ad-leader { width: 100%; max-width: 728px; }
+.ad-leader .ad-box { height: 90px; }
+@media (max-width: 760px) { .ad-leader .ad-box { height: 100px; max-width: 320px; } .ad-leader { max-width: 320px; } }
+
+.home-ad { padding-bottom: 40px; }
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(10, 14, 18, .55); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); animation: modal-fade .18s ease-out; }
+.modal[hidden] { display: none !important; }
+.modal-card { position: relative; width: 100%; max-width: 520px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; box-shadow: 0 20px 60px rgba(0, 0, 0, .35); animation: modal-rise .22s cubic-bezier(.2, .7, .3, 1); }
+.modal-card h2 { margin: 0 0 16px; font-family: var(--f-display); font-weight: 900; font-size: 20px; }
+.modal-x { position: absolute; top: 12px; right: 12px; border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; }
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choice { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; text-align: left; font: inherit; color: inherit; background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border-color .15s, transform .15s; }
+.choice:hover { border-color: var(--muted); transform: translateY(-1px); }
+.choice.current { border-color: var(--done-line); }
+.choice .c-name { font-size: 18px; font-weight: 700; }
+.choice .c-meta { grid-column: 1; color: var(--muted); font-size: 13px; }
+.choice .c-count { grid-row: 1 / span 2; grid-column: 2; font-variant-numeric: tabular-nums; font-weight: 700; }
+.choice .c-bar { grid-column: 1 / -1; height: 6px; background: var(--panel-2); border-radius: 99px; overflow: hidden; margin-top: 6px; }
+.choice .c-bar u { display: block; height: 100%; background: var(--ok); }
+.choice .c-go { grid-row: 1 / span 2; grid-column: 2; font-size: 20px; color: var(--muted); }
+.choice { text-decoration: none; }
+body.modal-open { overflow: hidden; }
+@keyframes modal-fade { from { opacity: 0; } }
+@keyframes modal-rise { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover { transform: none; } }
+
+.site-head { gap: 14px; }
+.more { position: relative; flex: none; }
+.more summary { list-style: none; cursor: pointer; color: var(--muted); padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; white-space: nowrap; user-select: none; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary:hover, .more[open] summary, .more.current summary { color: var(--fg); background: var(--panel-2); }
+.more .menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; z-index: 40; }
+.more .menu a { color: var(--fg); text-decoration: none; padding: 8px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; }
+.more .menu a:hover, .more .menu a[aria-current="page"] { background: var(--panel-2); }
+@media (max-width: 760px) { .site-head nav, .site-head .more.lists { display: none; } .more .menu a.primary { display: block; } }
+.more .menu a.primary { display: none; }
+@media (max-width: 760px) { .more .menu a.primary { display: block; } .more .menu .sep { display: block; } }
+.more .menu .sep { display: none; height: 1px; background: var(--line); margin: 4px 6px; }
+/* Floating pill header: dark glass bar with logo, tool links, a Tools menu and a button on the right. */
+:root { --head-h: 72px; }
+.site-head { height: 56px; width: min(1240px, calc(100% - 24px)); margin: 8px auto; padding: 0 8px 0 20px; gap: 4px; border-radius: 999px;
+  background: rgba(16,16,18,.86); border: 1px solid rgba(255,255,255,.09); border-bottom: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  position: sticky; top: 8px; z-index: 30; flex: none; color: #f4f4f5; font-family: var(--f-body); }
+.site-head .home { display: flex; align-items: center; gap: 9px; color: #fff; font-family: var(--f-body); font-weight: 700; font-size: 19px; letter-spacing: -.01em; margin-right: 16px; text-decoration: none; }
+.site-head .home span { color: #fff; }
+.site-head .logo { flex: none; }
+.site-head nav { display: flex; gap: 2px; }
+.site-head nav a, .site-head .more summary { color: #a1a1aa; background: none; font-weight: 500; font-size: 15px; line-height: 22px; padding: 8px 14px; border-radius: 999px; transition: color .15s, background-color .15s; }
+.site-head nav a:hover, .site-head .more summary:hover, .site-head .more[open] summary { color: #fff; background: rgba(255,255,255,.06); }
+.site-head nav a[aria-current="page"], .site-head .more.current summary { color: #fff; background: none; }
+.site-head .more summary { display: flex; align-items: center; gap: 5px; position: relative; }
+.site-head .more .chev { transition: transform .15s; }
+.site-head .more[open] .chev { transform: rotate(180deg); }
+.site-head .more .dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; margin-left: 3px; box-shadow: 0 0 8px rgba(255,59,48,.7); }
+.site-head .more .menu { left: 0; right: auto; top: calc(100% + 12px); min-width: 200px; background: #141416; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.45); padding: 6px; }
+.site-head .more .menu a { color: #d4d4d8; font-weight: 500; border-radius: 9px; }
+.site-head .more .menu a:hover, .site-head .more .menu a[aria-current="page"] { color: #fff; background: rgba(255,255,255,.07); }
+.site-head .more .menu .sep { background: rgba(255,255,255,.09); }
+.site-head .cta { margin-left: auto; display: flex; align-items: center; gap: 8px; color: #e4e4e7; text-decoration: none; font-weight: 600; font-size: 15px; padding: 9px 16px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.04); white-space: nowrap; transition: background-color .15s, border-color .15s; }
+.site-head .cta:hover, .site-head .cta[aria-current="page"] { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); color: #fff; }
+.site-head :focus-visible { outline: 2px solid #ff3b30; outline-offset: 2px; }
+@media (max-width: 760px) { .site-head nav, .site-head .more.lists { display: none; } .site-head { padding-left: 16px; } .site-head .home { font-size: 17px; margin-right: 4px; } .site-head .more .menu { left: auto; right: -90px; } }
+@media (max-width: 400px) { .site-head .cta span { display: none; } .site-head .cta { padding: 9px 11px; } }
+.site-head .cta { margin-right: 6px; }
+.site-head .account { position: relative; flex: none; margin-left: auto; }
+.site-head .signin { display: flex; align-items: center; gap: 10px; background: none; border: 0; color: #e4e4e7; font: inherit; font-weight: 500; font-size: 15px; padding: 4px 14px 4px 4px; border-radius: 999px; cursor: pointer; transition: background-color .15s; }
+.site-head .signin:hover, .site-head .signin[aria-expanded="true"] { background: rgba(255,255,255,.07); color: #fff; }
+.site-head .avatar { width: 36px; height: 36px; border-radius: 50%; background: #3f3f46; color: #8e8e96; display: grid; place-items: end center; overflow: hidden; flex: none; }
+.site-head .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.site-head .signin.in .avatar { place-items: center; }
+.site-head .signin.in .lbl { display: none; }
+.site-head .signin.in { padding: 4px; }
+.site-head .signin-pop { position: absolute; right: 0; top: calc(100% + 12px); width: 260px; background: #141416; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.45); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.45; color: #a1a1aa; z-index: 40; }
+.site-head .signin-pop[hidden] { display: none; }
+.site-head .signin-pop b { color: #fff; font-size: 15px; }
+@media (max-width: 760px) { .site-head .signin .lbl { display: none; } .site-head .signin { padding: 4px; } .site-head { padding-right: 6px; } }
+@media (max-width: 400px) { .site-head .home span { font-size: 16px; } .site-head .cta { margin-right: 2px; } }
+/* phones: Seed Map and Player Search stay in the bar; everything else moves into the menu (☰) next to the profile picture */
+.site-head .more.burger { display: none; }
+.site-head .more .menu .grp { display: block; padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8e8e96; }
+@media (max-width: 760px) {
+  .site-head { padding: 0 6px 0 14px; gap: 2px; }
+  .site-head nav:not(.after) { display: flex; }
+  .site-head nav:not(.after) a { padding: 8px 9px; font-size: 14px; }
+  .site-head .more.toolmenu, .site-head .more.lists, .site-head nav.after { display: none; }
+  .site-head .home { margin-right: 6px; }
+  .site-head .home span { display: none; }
+  .site-head .more.burger { display: block; }
+  .site-head nav a.k-stats { display: none; }
+  .site-head .more.burger summary { padding: 8px 10px; display: grid; place-items: center; }
+  .site-head .more.burger .menu { left: auto; right: 0; min-width: 230px; max-height: calc(100vh - 90px); overflow-y: auto; }
+  .site-head .more.burger { margin-left: auto; }
+  .site-head .account { margin-left: 2px; }
+  .site-head .more.burger .menu .sep { display: block; height: 1px; background: rgba(255,255,255,.12); margin: 6px 8px; }
+}
+@media (max-width: 340px) { .site-head nav:not(.after) a { padding: 8px 6px; font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .site-head nav a, .site-head .signin, .site-head .more summary, .site-head .cta, .site-head .more .chev { transition: none; } }
+
+.more-tools { padding-bottom: 40px; display: flex; flex-direction: column; gap: 14px; }
+.more-tools h2 { margin: 0; font-family: var(--f-display); font-weight: 900; font-size: 20px; }
+.mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.mini a { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 4px; transition: border-color .15s, transform .15s; }
+.mini a:hover { border-color: var(--muted); transform: translateY(-2px); }
+.mini b { font-size: 16px; }
+.mini span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+@media (prefers-reduced-motion: reduce) { .mini a { transition: none; } .mini a:hover { transform: none; } }
+@media (max-width: 700px) { .tools { grid-template-columns: 1fr; } }
+
+/* Animated world background: sky with clouds over the hero, ground and underground behind the tools. */
+html { background: linear-gradient(#86c9e6 0 40%, #6f6f6f 40%); }
+body { background: transparent; position: relative; display: flow-root; }
+.scene { position: absolute; top: 0; left: 0; right: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.scene canvas { position: absolute; top: 0; left: 0; display: block; }
+#skyCv { width: 100%; background: #86c9e6; }
+#playerCv { width: 100%; }
+#worldCv { image-rendering: pixelated; image-rendering: crisp-edges; transition: filter 1.5s linear; }
+main { position: relative; z-index: 1; }
+.site-head { z-index: 30; }
+.hero { min-height: clamp(260px, 38svh, 400px); padding: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.hero h1 { color: #10202a; font-size: clamp(32px, 6vw, 56px); text-shadow: 0 2px 0 rgba(255,255,255,.35); }
+.hero h1 span { color: #b3261e; }
+.hero p { color: #1f3c4a; font-size: 19px; }
+.tools { padding-top: 56px; }
+.card, .mini a { box-shadow: 0 2px 0 rgba(0,0,0,.25), 0 14px 34px rgba(0,0,0,.35); }
+.more-tools h2 { color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.55); }
+.ad-slot .ad-label { color: #eef1f3; text-shadow: 0 1px 0 rgba(0,0,0,.6); }
+footer { background: rgba(12,14,16,.78); color: #d9dee2; border: 0; border-radius: 10px; padding: 16px 20px; margin: 0; }
+main.wrap { padding-bottom: 72px; }
+.hero h1, .hero p { transition: color 2s ease, text-shadow 2s ease; }
+.hero.night h1 { color: #f2f5f8; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.hero.night h1 span { color: #ff6b5f; }
+.hero.night p { color: #c8d4e6; }
+@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { background: linear-gradient(#0b1430 0 40%, #3c3c3f 40%); } }
+html[data-theme="dark"] { background: linear-gradient(#0b1430 0 40%, #3c3c3f 40%); }
+@media (max-width: 640px) { .hero { min-height: 220px; } }
+/* the top bar is see-through glass over the animated sky */
+.site-head { background: rgba(14,20,28,.34); border-color: rgba(255,255,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.12); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); }
+.site-head nav a, .site-head .more summary { color: rgba(255,255,255,.86); text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.site-head nav a:hover, .site-head .more summary:hover, .site-head .more[open] summary { color: #fff; background: rgba(255,255,255,.14); }
+.site-head .home, .site-head .signin { text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.site-head .signin:hover, .site-head .signin[aria-expanded="true"] { background: rgba(255,255,255,.14); }
+.site-head .avatar { background: rgba(255,255,255,.22); color: rgba(255,255,255,.75); }
+.legal-links a { color: inherit; } .legal-links { white-space: nowrap; }
+@font-face { font-family: "CH Display"; src: local("Franklin Gothic Heavy"), local("FranklinGothic-Heavy"), local("Franklin Gothic Demi"); font-weight: 900; font-style: normal; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 900; letter-spacing: 0; }
+</style>
+</head>
+<body>
+<div class="scene" aria-hidden="true"><canvas id="skyCv"></canvas><canvas id="worldCv"></canvas><canvas id="playerCv"></canvas></div>
+<header class="site-head"><a class="home" href="index.html"><svg class="logo" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2.5 20.5 7.2 12 12 3.5 7.2z" fill="#ff3b30"/><path d="M3.5 7.2 12 12v9.5l-8.5-4.8z" fill="#f4f4f5"/><path d="M20.5 7.2 12 12v9.5l8.5-4.8z" fill="#a1a1aa"/></svg><span>Chunk Hub</span></a><nav aria-label="Main tools"><a class="k-seed" href="seed-map/index.html">Seed Map</a><a class="k-player" href="player/index.html">Player Search</a><a class="k-stats" href="world-stats/index.html">World Stats</a></nav><details class="more toolmenu"><summary>Tools <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu"><a class="primary" href="seed-map/index.html">Seed Map</a><a class="primary" href="player/index.html">Player Search</a><a class="primary" href="world-stats/index.html">World Stats</a><a class="primary" href="advancements/index.html">All Advancements</a><a class="primary" href="collector/index.html#blocks">All Blocks</a><a class="primary" href="collector/index.html#mobs">All Mobs</a><a class="primary" href="downloads/index.html">Downloads</a><span class="sep"></span><a href="ore-finder/index.html">Ore Finder</a><a href="seed-generator/index.html">Seed Generator</a><a href="slime-chunks/index.html">Slime Chunks</a><a href="portal-calculator/index.html">Portal Calculator</a><a href="circle-generator/index.html">Circle Generator</a><a href="enchanting/index.html">Enchanting Planner</a><a href="brewing/index.html">Brewing Guide</a><a href="pixel-art/index.html">Pixel Art Planner</a></div></details><details class="more lists"><summary>Checklists <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu"><a href="advancements/index.html">All Advancements</a><a href="collector/index.html#blocks">All Blocks</a><a href="collector/index.html#mobs">All Mobs</a></div></details><nav class="after" aria-label="Downloads"><a href="downloads/index.html">Downloads</a></nav><details class="more burger"><summary aria-label="Menu"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></summary><div class="menu"><span class="grp">Tools</span><a href="world-stats/index.html">World Stats</a><a href="ore-finder/index.html">Ore Finder</a><a href="seed-generator/index.html">Seed Generator</a><a href="slime-chunks/index.html">Slime Chunks</a><a href="portal-calculator/index.html">Portal Calculator</a><a href="circle-generator/index.html">Circle Generator</a><a href="enchanting/index.html">Enchanting Planner</a><a href="brewing/index.html">Brewing Guide</a><a href="pixel-art/index.html">Pixel Art Planner</a><span class="sep"></span><span class="grp">Checklists</span><a href="advancements/index.html">All Advancements</a><a href="collector/index.html#blocks">All Blocks</a><a href="collector/index.html#mobs">All Mobs</a><span class="sep"></span><span class="grp">More</span><a href="downloads/index.html">Downloads</a><a href="account/index.html">My account</a></div></details><div class="account"><button type="button" class="signin" aria-haspopup="dialog" aria-expanded="false"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="9" r="4.2" fill="currentColor"/><path d="M3.5 21.5c1.4-4.3 4.6-6.4 8.5-6.4s7.1 2.1 8.5 6.4" fill="currentColor"/></svg></span><span class="lbl">Sign In</span></button><div class="signin-pop" role="dialog" aria-label="Accounts" hidden><b>Accounts are coming soon</b><span>You'll be able to sign in and keep your progress on every device. For now, progress is saved in this browser.</span></div><script defer src="lib/account-config.js"></script><script defer src="lib/supabase.js"></script><script defer src="lib/account.js" data-root=""></script></div><script>(function(){var h=document.currentScript.parentNode,d=h.querySelectorAll("details");d.forEach(function(x){x.addEventListener("toggle",function(){if(x.open)d.forEach(function(y){if(y!==x)y.open=false;});});});document.addEventListener("click",function(e){d.forEach(function(x){if(x.open&&!x.contains(e.target))x.open=false;});});document.addEventListener("keydown",function(e){if(e.key==="Escape")d.forEach(function(x){x.open=false;});});h.addEventListener("click",function(e){if(e.target.closest(".menu a"))d.forEach(function(x){x.open=false;});});})();</script></header>
+<main class="wrap">
+  <section class="intro hero"><h1 class="sr-only">Chunk Hub: free Minecraft tools</h1></section>
+  <section class="tools" aria-label="Tools">
+    <a class="card" href="seed-map/index.html">
+      <div class="art"><canvas id="artSeed" aria-hidden="true"></canvas></div>
+      <div class="body">
+        <h2>Seed Map</h2>
+        <p>Biomes, structures and slime chunks for any seed, with click-to-copy coordinates and teleport commands.</p>
+        <ul><li>Java 1.0 to 26.3</li><li>Bedrock biomes and slime chunks</li><li>Overworld, Nether, End</li></ul>
+        <span class="go">Open the seed map →</span>
+      </div>
+    </a>
+    <a class="card" href="player/index.html">
+      <div class="art"><canvas id="artPlayer" aria-hidden="true"></canvas></div>
+      <div class="body">
+        <h2>Player Search</h2>
+        <p>Look up any Java player by name or UUID. See their skin in 3D, their cape and UUID, or check if a name is free.</p>
+        <ul><li>3D skin viewer</li><li>Name and skin history</li><li>Name availability</li></ul>
+        <span class="go">Search players →</span>
+      </div>
+    </a>
+    <a class="card" href="world-stats/index.html">
+      <div class="art"><canvas id="artStats" aria-hidden="true"></canvas></div>
+      <div class="body">
+        <h2>World Stats</h2>
+        <p>Link your world with the Chunk Hub mod and see every statistic Minecraft keeps, from distance flown to every mob you’ve fought.</p>
+        <ul><li>Blocks, items, mobs and food</li><li>Advancements sync to your checklist</li><li>Fabric 26.2</li></ul>
+        <span class="go">See your stats →</span>
+      </div>
+    </a>
+    <a class="card" href="collector/index.html" id="collectorCard" aria-haspopup="dialog">
+      <div class="art"><canvas id="artCol" aria-hidden="true"></canvas></div>
+      <div class="body">
+        <h2>Checklists</h2>
+        <p>Tick off every advancement, block and mob in the game, with a step-by-step guide for each advancement.</p>
+        <ul><li>Advancements (126)</li><li>Blocks (937) · Mobs (88)</li><li>Progress saved in your browser</li></ul>
+        <span class="go">Choose a checklist →</span>
+      </div>
+    </a>
+  </section>
+  <section class="more-tools" aria-label="More tools"><h2>More tools</h2><div class="mini"><a href="ore-finder/index.html"><b>Ore Finder</b><span>Diamonds, gold, ancient debris and other ore veins nearest to you.</span></a><a href="seed-generator/index.html"><b>Seed Generator</b><span>Search thousands of seeds for the start you want, like a village and portal near spawn.</span></a><a href="slime-chunks/index.html"><b>Slime Chunks</b><span>Slime chunks around you and the best spot for a slime farm.</span></a><a href="portal-calculator/index.html"><b>Portal Calculator</b><span>Convert between Overworld and Nether coordinates.</span></a><a href="circle-generator/index.html"><b>Circle Generator</b><span>Block plans for circles, ovals, spheres and domes of any size.</span></a><a href="enchanting/index.html"><b>Enchanting Planner</b><span>The cheapest anvil order for any set of enchantments.</span></a><a href="brewing/index.html"><b>Brewing Guide</b><span>Every potion, its ingredients and how long it lasts.</span></a><a href="pixel-art/index.html"><b>Pixel Art Planner</b><span>Turn a picture into a block plan with a materials list.</span></a></div></section>
+  <div class="home-ad"><div class="ad-slot ad-leader" data-ad-slot="home-bottom"><span class="ad-label">Advertisement</span><div class="ad-box">Ad space · 728 × 90</div></div></div>
+  <footer>
+    <span>NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</span><span class="legal-links"><a href="terms/index.html">Terms</a> · <a href="privacy/index.html">Privacy</a></span>
+  </footer>
+</main>
+
+<div class="modal" id="chooser" hidden role="dialog" aria-modal="true" aria-labelledby="chooserTitle">
+  <div class="modal-card">
+    <button type="button" class="modal-x" id="chooserClose" aria-label="Close">×</button>
+    <h2 id="chooserTitle">Choose a checklist</h2>
+    <div class="choices"><a class="choice" href="advancements/index.html"><span class="c-name">Advancements</span><span class="c-meta">126 to earn · step-by-step guides</span><span class="c-go" aria-hidden="true">→</span></a><a class="choice" href="collector/index.html#blocks"><span class="c-name">Blocks</span><span class="c-meta">937 to collect · 17 categories</span><span class="c-go" aria-hidden="true">→</span></a><a class="choice" href="collector/index.html#mobs"><span class="c-name">Mobs</span><span class="c-meta">88 to collect · 4 categories</span><span class="c-go" aria-hidden="true">→</span></a></div>
+  </div>
+</div>
+<script>
+
+// Seed Map map icons: original 16x16 pixel art. '.' is transparent, 'k' is the outline
+// (drawn as a dark tone of the neighbouring colour). Edit a grid or palette to change an icon.
+const ICONS = {
+  village: { p: {"k": "#4a3208", "Y": "#e9b93a", "y": "#fff0a0", "O": "#7a4b1a"}, g: [
+    '................',
+    '.......kk.......',
+    '......kYYk......',
+    '.....kYyYYk.....',
+    '.....kYYYYk.....',
+    '....kYyYYYYk....',
+    '....kYyYYYYk....',
+    '....kYYYYYYk....',
+    '...kYyYYYYYYk...',
+    '...kYYYYYYYYk...',
+    '..kYYYYYYYYYYk..',
+    '..kkkkkkkkkkkk..',
+    '......kOOk......',
+    '.......kk.......',
+    '................',
+    '................',
+  ]},
+  desert_temple: { p: {"k": "#5a4020", "S": "#e3c27a", "s": "#c39a52", "d": "#3a2a1a"}, g: [
+    '................',
+    '................',
+    '.......kk.......',
+    '......kSSk......',
+    '.....kSSSSk.....',
+    '.....kSsSSk.....',
+    '....kSSSSSSk....',
+    '....kSSSSsSk....',
+    '...kSSSkkSSSk...',
+    '...kSsSkdkSSk...',
+    '..kSSSkddkSSSk..',
+    '..kSSSkddkSsSk..',
+    '.kSSsSkddkSSSSk.',
+    '.kSSSSkddkSSsSk.',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ]},
+  jungle_temple: { p: {"k": "#2f322e", "G": "#8c8f86", "M": "#5e8a3a", "v": "#3f7a2a", "d": "#1f2420", "s": "#6f726a"}, g: [
+    '................',
+    '..kkkkkkkkkkkk..',
+    '..kMMGGGMMGGGk..',
+    '..kMGGGGGMGGGk..',
+    '..kGGsGGGGGsGk..',
+    '..kGGGGkkGGGGk..',
+    '..kGvGkddkGvGk..',
+    '..kGvGkddkGvGk..',
+    '..kGvGGkkGGvGk..',
+    '..kGGGGGGGGvGk..',
+    '..kGsGGGGsGGGk..',
+    '..kGGGvGGGGGGk..',
+    '..kMGGvGGGGMGk..',
+    '..kkkkkkkkkkkk..',
+    '................',
+    '................',
+  ]},
+  swamp_hut: { p: {"k": "#16161c", "C": "#3a3a44", "c": "#6a6a78", "w": "#7fd34a", "g": "#a8f070"}, g: [
+    '................',
+    '................',
+    '................',
+    '....g..g...g....',
+    '...g..g..g......',
+    '..kkkkkkkkkkkk..',
+    '..kCwwwwwwwwCk..',
+    '..kkkkkkkkkkkk..',
+    '...kCCCCCCCCk...',
+    '..kCCcCCCCCCCk..',
+    '..kCcCCCCCCCCk..',
+    '..kCCCCCCCCCCk..',
+    '...kCCCCCCCCk...',
+    '....kkkkkkkk....',
+    '....kk....kk....',
+    '................',
+  ]},
+  igloo: { p: {"k": "#5d7a8c", "W": "#f3f8fb", "w": "#c7d9e4", "d": "#2b3a44", "P": "#dfeaf1"}, g: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '......kkkk......',
+    '....kkWWWWkk....',
+    '...kWWWWWWWWk...',
+    '..kWWwWWWWWWWk..',
+    '..kWWWWWWWwWWk..',
+    '.kWWWWWkkkWWWWk.',
+    '.kWwWWkdddkWWWk.',
+    '.kWWWWkdddkWwWk.',
+    '.kWWWWkdddkWWWk.',
+    'kkkkkkkkkkkkkkkk',
+    'PPPPPPPPPPPPPPPP',
+    '................',
+  ]},
+  ocean_ruin: { p: {"k": "#2c3d3a", "S": "#9fb8b0", "s": "#6f8c84", "g": "#3f9a4c"}, g: [
+    '................',
+    '................',
+    '..kkkk..........',
+    '..kSSk..........',
+    '..kSsk.....kk...',
+    '..kSSk....kSSk..',
+    '..kSSk....kSsk..',
+    '..kSsk.g..kSSk..',
+    '..kSSk.g..kSSk..',
+    '..kSSk.gg.kSsk..',
+    '..kSsk..g.kSSk..',
+    '..kSSk.gg.kSSk..',
+    'kkkkkkkkkkkkkkkk',
+    'kSSsSSSSsSSSSsSk',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ]},
+  shipwreck: { p: {"k": "#1e2830", "S": "#8a9aa8"}, g: [
+    '................',
+    '......kkkk......',
+    '.....kSkkSk.....',
+    '.....kSkkSk.....',
+    '......kSSk......',
+    '...kkkkSSkkkk...',
+    '...kSSSSSSSSk...',
+    '...kkkkSSkkkk...',
+    '......kSSk......',
+    '......kSSk......',
+    '.kk...kSSk...kk.',
+    '.kSk..kSSk..kSk.',
+    '..kSkkkSSkkkSk..',
+    '...kSSSSSSSSk...',
+    '....kkkkkkkk....',
+    '................',
+  ]},
+  monument: { p: {"k": "#1f4a44", "P": "#4fc4b0", "H": "#3f7f74"}, g: [
+    '................',
+    '..k....kk....k..',
+    '.kPk..kPPk..kPk.',
+    '.kPk..kPPk..kPk.',
+    '.kPk..kPPk..kPk.',
+    '.kPPkkkPPkkkPPk.',
+    '..kPPPPPPPPPPk..',
+    '...kkkkPPkkkk...',
+    '......kPPk......',
+    '......kHHk......',
+    '......kHHk......',
+    '......kHHk......',
+    '......kHHk......',
+    '......kHHk......',
+    '......kHHk......',
+    '.......kk.......',
+  ]},
+  mansion: { p: {"k": "#1a120c", "D": "#4a3020", "W": "#c9b48f", "g": "#9fd0e6", "R": "#2e1d12", "d": "#1a100a"}, g: [
+    '................',
+    '................',
+    '...kkkkkkkkkk...',
+    '..kRRRRRRRRRRk..',
+    '.kkkkkkkkkkkkkk.',
+    '.kDWDgDWWDgDWDk.',
+    '.kDWDgDWWDgDWDk.',
+    '.kkkkkkkkkkkkkk.',
+    '.kDgDWDWWDWDgDk.',
+    '.kDgDWDddDWDgDk.',
+    '.kDWDWDddDWDWDk.',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+    '................',
+    '................',
+    '................',
+  ]},
+  outpost: { p: {"k": "#1e140c", "R": "#b33a3a", "W": "#9b7a52", "D": "#6b4a2e", "g": "#1a1a1a", "d": "#241810"}, g: [
+    '..........kRR...',
+    '..........kRRR..',
+    '..........k.....',
+    '....kkkkkkk.....',
+    '....kWkWkWk.....',
+    '....kkkkkkk.....',
+    '.....kDDDk......',
+    '.....kDgDk......',
+    '.....kDDDk......',
+    '.....kDDDk......',
+    '.....kDgDk......',
+    '.....kDDDk......',
+    '....kDDDDDk.....',
+    '....kDDdDDk.....',
+    '...kkkkkkkkk....',
+    '................',
+  ]},
+  ruined_portal: { p: {"k": "#120c1a", "O": "#2a1f3d", "P": "#a254e0", "p": "#7a2fc0", "N": "#8a3b2b", "n": "#6a2a1e"}, g: [
+    '................',
+    '...kkkkkk.......',
+    '...kOOOOk.kk....',
+    '...kOkkkk.kOk...',
+    '...kOkPPPPkOk...',
+    '...kOkPPpPkOk...',
+    '...kOkPPPPkOk...',
+    '...kOkPpPPkOk...',
+    '...kOkPPPPkOk...',
+    '...kOkPPPpkOk...',
+    '...kOkPPPPkOk...',
+    '..kkOkkkkkkOkk..',
+    '.kNNOOOOOOOONNk.',
+    'kNNnNNNNNnNNNNNk',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ]},
+  ancient_city: { p: {"k": "#12181f", "D": "#3a4654", "c": "#6fe8f0", "C": "#e0ffff"}, g: [
+    '................',
+    '.......kk.......',
+    '......k..k......',
+    '......kkkk......',
+    '.....kDDDDk.....',
+    '....kkkkkkkk....',
+    '....kDccccDk....',
+    '....kDcCCcDk....',
+    '....kDcCCcDk....',
+    '....kDccccDk....',
+    '....kkkkkkkk....',
+    '.....kDDDDk.....',
+    '......kkkk......',
+    '................',
+    '................',
+    '................',
+  ]},
+  buried_treasure: { p: {"k": "#5a4020", "P": "#e6d3a3", "R": "#c0392b"}, g: [
+    '................',
+    '................',
+    '..kkkkkkkkkkkk..',
+    '.kPPPPPPPPPPPPk.',
+    '.kPRRPPPPPPRRPk.',
+    '.kPPRRPPPPRRPPk.',
+    '.kPPPRRPPRRPPPk.',
+    '.kPPPPRRRRPPPPk.',
+    '.kPPPPRRRRPPPPk.',
+    '.kPPPRRPPRRPPPk.',
+    '.kPPRRPPPPRRPPk.',
+    '.kPRRPPPPPPRRPk.',
+    '.kPPPPPPPPPPPPk.',
+    '..kkkkkkkkkkkk..',
+    '................',
+    '................',
+  ]},
+  trail_ruins: { p: {"k": "#2e1e10", "H": "#8a5a35", "M": "#b0b6bc", "B": "#e2c58a", "b": "#b89a5a"}, g: [
+    '................',
+    '..........kk....',
+    '.........kHHk...',
+    '........kHHk....',
+    '.......kHHk.....',
+    '......kHHk......',
+    '.....kMMk.......',
+    '....kMMMk.......',
+    '...kBBBBk.......',
+    '..kBbBBBk.......',
+    '.kBBbBBk........',
+    '.kBbBBk.........',
+    '.kBBBk..........',
+    '..kkk...........',
+    '................',
+    '................',
+  ]},
+  trial_chambers: { p: {"k": "#2e1a10", "C": "#c6763c"}, g: [
+    '................',
+    '................',
+    '...kkkk.........',
+    '..kCCCCk........',
+    '.kCkkkkCk.......',
+    '.kCk..kCk.......',
+    '.kCk..kCkkkkkkkk',
+    '.kCk..kCCCCCCCCk',
+    '.kCkkkkCkkkCkkCk',
+    '..kCCCCk..kCk...',
+    '...kkkk...kk....',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ]},
+  abandoned_camp: { p: {"k": "#2a1a10", "F": "#ff7a1f", "Y": "#ffd23a", "L": "#7a5230", "l": "#a87a48"}, g: [
+    '................',
+    '................',
+    '................',
+    '.......kk.......',
+    '......kFFk......',
+    '.....kFYFFk.....',
+    '.....kFYYFk.....',
+    '....kFYYYYFk....',
+    '....kFYYYYFk....',
+    '...kkkFYYFkkk...',
+    '..kLLkkkkkkLLk..',
+    '.kLlLLLkkLLLlLk.',
+    '.kkLLLLLLLLLLkk.',
+    '..kkkkkkkkkkkk..',
+    '................',
+    '................',
+  ]},
+  fortress: { p: {"k": "#1e0a0c", "N": "#5a1e22", "n": "#3a1014", "f": "#ff8a2a", "F": "#ffc24a"}, g: [
+    '................',
+    '................',
+    '................',
+    'kkkk..kkkk..kkkk',
+    'kNNk..kNNk..kNNk',
+    'kNNkkkkNNkkkkNNk',
+    'kNnNNNnNNNnNNNnk',
+    'kNNNNNNNNNNNNNNk',
+    'knNNNnNNNnNNNnNk',
+    'kNNNNkkkkkkNNNNk',
+    'kNnNNkfffFkNnNNk',
+    'kNNNNkfFffkNNNNk',
+    'kNNnNkffFfkNnNNk',
+    'kNNNNkfffFkNNNNk',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ]},
+  bastion: { p: {"k": "#5a3f08", "G": "#f2c13a", "g": "#fff1a0"}, g: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '.....kkkkkk.....',
+    '....kGgGGGGk....',
+    '...kGGGGGGGGk...',
+    '..kkkkkkkkkkkk..',
+    '..kGgGGkkGgGGk..',
+    '.kGGGGGkkGGGGGk.',
+    '.kkkkkkkkkkkkkk.',
+    '................',
+    '................',
+    '................',
+    '................',
+  ]},
+  end_city: { p: {"k": "#3a2a4a", "P": "#c9a6d6", "p": "#9d7fb0", "g": "#2a1a3a"}, g: [
+    '......kkkk......',
+    '......kPPk......',
+    '.....kkkkkk.....',
+    '.....kPpPPk.....',
+    '.....kPgPPk.....',
+    '....kkkkkkkk....',
+    '....kPPPpPPk....',
+    '....kPgPPgPk....',
+    '....kPPpPPPk....',
+    '...kkkkkkkkkk...',
+    '...kPpPPPPpPk...',
+    '...kPPgPPgPPk...',
+    '...kPPPkkPPPk...',
+    '...kPpPkkPpPk...',
+    '..kkkkkkkkkkkk..',
+    '................',
+  ]},
+  end_city_ship: { p: {"k": "#2e2440", "W": "#b9a6d9", "w": "#8e78b8"}, g: [
+    '................',
+    '................',
+    '................',
+    '.kk..........kk.',
+    'kWWk........kWWk',
+    'kWWWk......kWWWk',
+    'kWwWWk....kWWwWk',
+    '.kWWWWkkkkWWWWk.',
+    '.kWwWWWkkWWWwWk.',
+    '..kWWWWkkWWWWk..',
+    '..kWwWk..kWwWk..',
+    '...kWWk..kWWk...',
+    '...kWk....kWk...',
+    '....k......k....',
+    '................',
+    '................',
+  ]},
+  stronghold: { p: {"k": "#3a2a10", "M": "#b08a3a", "W": "#f2eee2", "R": "#d03a2c", "S": "#6a7480"}, g: [
+    '................',
+    '................',
+    '.....kkkkkk.....',
+    '....kMMMMMMk....',
+    '...kMWWWWWWMk...',
+    '..kMWWWRRWWWMk..',
+    '..kMWWRRRRWWMk..',
+    '..kMWWWkkWWWMk..',
+    '..kMWWSSSSWWMk..',
+    '..kMWWWSSWWWMk..',
+    '...kMWWWWWWMk...',
+    '....kMMMMMMk....',
+    '.....kkkkkk.....',
+    '................',
+    '................',
+    '................',
+  ]},
+  spawn: { p: {"k": "#4a1410", "R": "#d33a2c", "r": "#ff8a7a", "W": "#ffffff"}, g: [
+    '................',
+    '.....kkkkkk.....',
+    '....kRRRRRRk....',
+    '...kRrRRRRRRk...',
+    '...kRRRkkRRRk...',
+    '...kRRkWWkRRk...',
+    '...kRRkWWkRRk...',
+    '...kRRRkkRRRk...',
+    '....kRRRRRRk....',
+    '....kRRRRRRk....',
+    '.....kRRRRk.....',
+    '......kRRk......',
+    '.......kk.......',
+    '................',
+    '................',
+    '................',
+  ]},
+};
+// Renders ICONS grids with selective outlines (outline takes a dark tone of the fill it borders),
+// top-left lighting, and a soft drop shadow. Returns RGBA pixels at 18x18 (1px shadow margin).
+function hex(c){return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];}
+function mix(a,b,t){return a.map((v,i)=>Math.round(v+(b[i]-v)*t));}
+// shift shadows toward blue-violet, highlights toward warm yellow, so tones read hand-picked
+const SH=[40,30,70], HI=[255,240,200];
+function renderIcon(v){
+  const N=16, W=18, px=new Uint8ClampedArray(W*W*4);
+  const at=(x,y)=>(x<0||y<0||x>=N||y>=N)?'.':v.g[y][x];
+  const isFill=c=>c!=='.'&&c!=='k';
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const c=at(x,y); if(c==='.')continue;
+    let col;
+    if(c==='k'){
+      // outline: darken the average neighbouring fill colour; edge facing outside gets the darkest tone
+      const nb=[[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>at(x+dx,y+dy)).filter(isFill);
+      const outside=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>at(x+dx,y+dy)==='.');
+      const base=nb.length?nb.map(n=>hex(v.p[n])).reduce((a,b)=>a.map((q,i)=>q+b[i])).map(q=>q/nb.length):hex(v.p.k);
+      col=mix(mix(base,SH,0.55),[0,0,0],outside?0.45:0.25);
+    }else{
+      col=hex(v.p[c]);
+      const up=at(x,y-1), lf=at(x-1,y), dn=at(x,y+1), rt=at(x+1,y);
+      if(up==='.'||up==='k'||lf==='.'||lf==='k') col=mix(col,HI,0.18);
+      else if(dn==='k'||rt==='k') col=mix(col,SH,0.18);
+    }
+    const i=((y+1)*W+(x+1))*4; px[i]=col[0];px[i+1]=col[1];px[i+2]=col[2];px[i+3]=255;
+  }
+  // drop shadow (down-right), only where empty
+  const out=new Uint8ClampedArray(px);
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++){
+    const i=(y*W+x)*4; if(px[i+3])continue;
+    const sx=x-1, sy=y-1;
+    if(sx>=0&&sy>=0&&px[(sy*W+sx)*4+3]){out[i]=20;out[i+1]=16;out[i+2]=30;out[i+3]=90;}
+  }
+  return out;
+}
+function haloSprite(base) {
+  const B = 18, N = 22, off = 2, out = new Uint8ClampedArray(N * N * 4);
+  const solid = (x, y) => x >= 0 && y >= 0 && x < B && y < B && base[(y * B + x) * 4 + 3] === 255;
+  const near = (x, y, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.abs(dx) + Math.abs(dy) <= r + (r > 1 ? 1 : 0) && solid(x + dx, y + dy)) return true; return false; };
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const bx = x - off, by = y - off, i = (y * N + x) * 4;
+    if (solid(bx, by)) { const j = (by * B + bx) * 4; out[i] = base[j]; out[i+1] = base[j+1]; out[i+2] = base[j+2]; out[i+3] = 255; }
+    else if (near(bx, by, 1)) { out[i] = 255; out[i+1] = 255; out[i+2] = 255; out[i+3] = 245; }
+    else if (near(bx, by, 2)) { out[i] = 10; out[i+1] = 12; out[i+2] = 18; out[i+3] = 150; }
+  }
+  return out;
+}
+
+(() => {
+  // Card art: pixel-noise terrain with a scatter of map icons (seed map) or ore veins (ore finder)
+  function terrain(g, w, h, seed, pal) {
+    let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const cell = 6, cols = Math.ceil(w / cell), rows = Math.ceil(h / cell);
+    const blobs = Array.from({ length: 9 }, () => [rnd() * cols, rnd() * rows, pal[Math.floor(rnd() * pal.length)]]);
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      let best = 1e9, c = pal[0];
+      for (const [bx, by, bc] of blobs) { const d = (x - bx) ** 2 + (y - by) ** 2 + rnd() * 6; if (d < best) { best = d; c = bc; } }
+      g.fillStyle = c; g.fillRect(x * cell, y * cell, cell, cell);
+    }
+    return rnd;
+  }
+  function size(cv) { const r = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); const g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.imageSmoothingEnabled = false; return [g, r.width, r.height]; }
+  function drawSeed() {
+    const cv = document.getElementById('artSeed'); const [g, w, h] = size(cv);
+    const rnd = terrain(g, w, h, 4242, ['#5f9a4e', '#4f8a42', '#2f6fa0', '#3a7fb0', '#d8c784', '#6b8f3a', '#c97a3a']);
+    const keys = ['village', 'desert_temple', 'shipwreck', 'stronghold', 'ancient_city', 'trial_chambers', 'buried_treasure', 'abandoned_camp', 'spawn'];
+    keys.forEach((k, i) => {
+      const c = document.createElement('canvas'); c.width = c.height = 22;
+      c.getContext('2d').putImageData(new ImageData(haloSprite(renderIcon(ICONS[k])), 22, 22), 0, 0);
+      const x = 20 + ((i * 97 + 31) % Math.max(1, w - 60)), y = 18 + ((i * 53 + 17) % Math.max(1, h - 60));
+      g.drawImage(c, Math.round(x), Math.round(y), 44, 44);
+    });
+  }
+  function drawOre() {
+    const cv = document.getElementById('artOre'); const [g, w, h] = size(cv);
+    let s = 99; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const cell = 6;
+    for (let y = 0; y < h; y += cell) for (let x = 0; x < w; x += cell) {
+      const deep = y > h * 0.55 + Math.sin(x / 40) * 8;
+      const pal = deep ? ['#4a4a52', '#3c3c44', '#36363d'] : ['#8a8f94', '#7c8186', '#6e7378'];
+      g.fillStyle = pal[Math.floor(rnd() * 3)]; g.fillRect(x, y, cell, cell);
+    }
+    const ores = [['#4fe0d6', '#c8fff9'], ['#f6d64a', '#fff3a8'], ['#2fc56b', '#a8f5c4'], ['#e0301e', '#ff7a6a'], ['#2f5fd0', '#8fb0ff'], ['#d8af93', '#f3d7c3']];
+    for (let v = 0; v < 14; v++) {
+      const [c, hi] = ores[v % ores.length];
+      const cx = rnd() * w, cy = rnd() * h, n = 3 + Math.floor(rnd() * 5);
+      for (let k = 0; k < n; k++) {
+        const x = Math.floor((cx + (rnd() - .5) * 30) / cell) * cell, y = Math.floor((cy + (rnd() - .5) * 18) / cell) * cell;
+        g.fillStyle = c; g.fillRect(x, y, cell, cell); if (rnd() < .35) { g.fillStyle = hi; g.fillRect(x, y, cell / 2, cell / 2); }
+      }
+    }
+  }
+  function drawAdv() {
+    const cv = document.getElementById('artAdv'); const [g, w, h] = size(cv);
+    g.fillStyle = '#2a3138'; g.fillRect(0, 0, w, h);
+    const rows = 6, rh = 22, top = (h - rows * rh) / 2 + 4, x0 = 24;
+    const cols = ['#5f9a4e', '#b3261e', '#8e78b8', '#c9772f', '#c9a227', '#5f9a4e'];
+    for (let i = 0; i < rows; i++) {
+      const y = Math.round(top + i * rh), done = i < 4;
+      g.fillStyle = '#3a434b'; g.fillRect(x0, y, w - x0 * 2, rh - 6);
+      g.fillStyle = done ? '#5cc287' : '#59636c'; g.fillRect(x0 + 6, y + 3, 10, 10);
+      if (done) { g.fillStyle = '#1b2228'; g.fillRect(x0 + 8, y + 8, 2, 2); g.fillRect(x0 + 10, y + 9, 2, 2); g.fillRect(x0 + 12, y + 6, 2, 3); }
+      g.fillStyle = cols[i]; g.fillRect(x0 + 24, y + 5, 6, 6);
+      g.fillStyle = done ? '#7d8790' : '#c9d1d8'; g.fillRect(x0 + 36, y + 6, 60 + ((i * 37) % 70), 4);
+    }
+  }
+  function drawCol() {
+    const cv = document.getElementById('artCol'); const [g, w, h] = size(cv);
+    g.fillStyle = '#2a3138'; g.fillRect(0, 0, w, h);
+    const pal = ['#5f9a4e', '#c9772f', '#8a8f94', '#c9a227', '#3f8fb0', '#8e78b8', '#b3261e', '#2fa38a'];
+    const cell = 26, gap = 6, cols = Math.floor((w - 24) / (cell + gap)), rows = Math.floor((h - 24) / (cell + gap));
+    const x0 = (w - cols * (cell + gap) + gap) / 2, y0 = (h - rows * (cell + gap) + gap) / 2;
+    let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const x = x0 + c * (cell + gap), y = y0 + r * (cell + gap), got = rnd() < 0.45;
+      g.fillStyle = got ? '#2f5a3c' : '#3a434b'; g.fillRect(x, y, cell, cell);
+      g.fillStyle = pal[Math.floor(rnd() * pal.length)]; g.fillRect(x + 7, y + 7, cell - 14, cell - 14);
+      if (got) { g.fillStyle = '#5cc287'; g.fillRect(x, y + cell - 3, cell, 3); }
+    }
+  }
+  function drawPlayer() {
+    const cv = document.getElementById('artPlayer'); const [g, w, h] = size(cv);
+    g.fillStyle = '#2a3138'; g.fillRect(0, 0, w, h);
+    // a row of blocky heads in different colours, and a search bar
+    let s = 11; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const skins = [['#e8b996', '#b5452c'], ['#8d5a3b', '#1b1b1b'], ['#f1c9a5', '#e2c25a'], ['#c98d5b', '#4a8a3a'], ['#6e4630', '#7b5bb0'], ['#d9a57a', '#d9d9d9']];
+    const n = Math.max(4, Math.floor((w - 40) / 64)), cell = 6, size8 = cell * 8, gap = (w - n * size8) / (n + 1), y0 = h * .52 - size8 / 2;
+    for (let k = 0; k < n; k++) {
+      const [skin, hair] = skins[k % skins.length], x0 = Math.round(gap + k * (size8 + gap)), yy = Math.round(y0 + (k % 2 ? 8 : -4));
+      for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
+        let c = skin; if (j < 2 || (j === 2 && (i === 0 || i === 7))) c = hair; if (j === 4 && (i === 2 || i === 5)) c = '#1d2328';
+        if (j === 6 && i > 2 && i < 5) c = '#8a4a3a'; if (rnd() < .08 && j > 2) c = skin === '#8d5a3b' ? '#7d4f34' : skin;
+        g.fillStyle = c; g.fillRect(x0 + i * cell, yy + j * cell, cell, cell);
+      }
+    }
+    const bw = Math.min(w - 48, 300), bx = (w - bw) / 2, by = 22;
+    g.fillStyle = '#3a434b'; g.fillRect(bx, by, bw, 26); g.fillStyle = '#c9d1d8'; g.fillRect(bx + 12, by + 11, bw * .4, 4);
+    g.fillStyle = '#e2574c'; g.fillRect(bx + bw - 30, by + 4, 24, 18); g.fillStyle = '#fff'; g.fillRect(bx + bw - 22, by + 9, 8, 8); g.fillStyle = '#e2574c'; g.fillRect(bx + bw - 20, by + 11, 4, 4); g.fillStyle = '#fff'; g.fillRect(bx + bw - 14, by + 16, 3, 3);
+  }
+  function drawStats() {
+    const cv = document.getElementById('artStats'); const [g, w, h] = size(cv);
+    g.fillStyle = '#2a3138'; g.fillRect(0, 0, w, h);
+    const n = Math.max(6, Math.floor((w - 40) / 34)), bw = 22, gap = (w - 40 - n * bw) / (n - 1), base = h - 30;
+    const cols = ['#5cc287', '#3f8fb0', '#c9a227', '#e2574c', '#8e78b8', '#c9772f'];
+    let s = 5; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    g.fillStyle = '#3a434b'; g.fillRect(20, base, w - 40, 3);
+    for (let i = 0; i < n; i++) {
+      const bh = Math.round((.25 + rnd() * .7) * (h - 70) / 6) * 6, x = Math.round(20 + i * (bw + gap));
+      g.fillStyle = cols[i % cols.length]; g.fillRect(x, base - bh, bw, bh);
+      g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(x, base - bh, bw, 4);
+    }
+    g.fillStyle = '#c9d1d8'; g.fillRect(20, 20, 90, 6); g.fillStyle = '#7d8790'; g.fillRect(20, 32, 54, 4);
+  }
+  const go = () => { drawSeed(); drawPlayer(); drawStats(); drawCol(); };
+  // The Checklists card opens a chooser instead of going straight to a collection
+  const card = document.getElementById('collectorCard'), modal = document.getElementById('chooser');
+  const close = () => { modal.hidden = true; document.body.classList.remove('modal-open'); card.focus(); };
+  card.addEventListener('click', e => { e.preventDefault(); modal.hidden = false; document.body.classList.add('modal-open'); modal.querySelector('.choice').focus(); });
+  document.getElementById('chooserClose').onclick = close;
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) close(); });
+  go(); let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(go, 120); });
+})();
+</script>
+<script>
+// Home page background: a blocky sky with drifting clouds and a day/night cycle, above a cut-away
+// of the ground (grass, dirt, stone, deepslate, caves, water, lava, ores, bedrock). All drawn in code.
+(function () {
+  const B = 16, T = 8; // CSS pixels per block, texture pixels per block (shown at 2x, pixelated)
+  const HALF_DAY = 10 * 60 * 1000; // day to night takes 10 minutes, night back to day another 10
+  const scene = document.querySelector('.scene'), sky = document.getElementById('skyCv'), world = document.getElementById('worldCv'), pcv = document.getElementById('playerCv');
+  const hero = document.querySelector('[data-scene-hero]') || document.querySelector('.hero'), main = document.querySelector('main') || document.body;
+  // data-mode="fixed": the world stays put behind the page (tool pages); otherwise it scrolls with the home page
+  const FIXED = scene && scene.dataset.mode === 'fixed', AMP = scene && scene.dataset.amp != null ? +scene.dataset.amp : 1, TREES = scene ? scene.dataset.trees || 'all' : 'all';
+  if (!scene || !sky || !world || !hero || !main) return;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)'), darkQ = matchMedia('(prefers-color-scheme: dark)');
+  const isDark = () => { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : darkQ.matches; };
+
+  // ---- deterministic noise, so the world looks the same on every visit and when resizing ----
+  function h2(x, y, s) { let n = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041)) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); n ^= n >>> 16; return (n >>> 0) / 4294967296; }
+  function vn(x, y, s) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const a = h2(xi, yi, s), b = h2(xi + 1, yi, s), c = h2(xi, yi + 1, s), d = h2(xi + 1, yi + 1, s); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
+  function fbm(x, y, s, o = 3) { let t = 0, a = 1, f = 1, n = 0; for (let i = 0; i < o; i++) { t += a * vn(x * f, y * f, s + i * 17); n += a; a *= .5; f *= 2; } return t / n; }
+
+  const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, DEEP = 4, BED = 5, CAVE = 6, CAVED = 7, WATER = 8, LAVA = 9, LOG = 10, LEAF = 11, TUFT = 12, POPPY = 13, DANDY = 14, GRANITE = 15, DIORITE = 16;
+  // ore: [spot colour, highlight, depth from (0 = surface, 1 = bottom), depth to, noise scale, threshold]
+  const ORES = [
+    [[38, 38, 40], [70, 70, 72], .02, .5, .5, .85],      // coal
+    [[214, 170, 140], [240, 210, 186], .08, .7, .55, .885], // iron
+    [[214, 116, 74], [110, 184, 150], .05, .45, .55, .88], // copper
+    [[250, 222, 60], [255, 248, 170], .5, 1, .6, .915],       // gold
+    [[214, 24, 20], [255, 100, 90], .62, 1, .55, .91],      // redstone
+    [[38, 78, 200], [96, 136, 236], .38, .85, .6, .915],      // lapis
+    [[80, 222, 226], [200, 252, 255], .74, 1, .65, .925],    // diamond
+  ];
+
+  function generate(cols, rows, base) {
+    const N = cols * rows, cell = new Uint8Array(N), ore = new Uint8Array(N), surf = new Int16Array(cols);
+    const at = (x, y) => y * cols + x, inb = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows;
+    // ground follows the sketch: a hill on the left, a dip in the middle, a taller hill on the right
+    const g = (t, c, w) => Math.exp(-(((t - c) / w) ** 2)), amp = (.6 + .4 * Math.min(1, cols / 80)) * AMP;
+    for (let x = 0; x < cols; x++) {
+      const t = cols > 1 ? x / (cols - 1) : .5;
+      const h = amp * (2.4 * g(t, .15, .17) + 3.2 * g(t, .84, .16) - 2.2 * g(t, .49, .15)) + (fbm(x * .1, 0, 7) - .5) * 2.2 * Math.min(1, AMP + .4);
+      surf[x] = Math.max(2, base - Math.round(h));
+    }
+    // even out single-block spikes and pits so the hills read as smooth steps
+    for (let x = 1; x < cols - 1; x++) { const l = surf[x - 1], r = surf[x + 1]; if (surf[x] < l && surf[x] < r) surf[x] = Math.min(l, r); if (surf[x] > l && surf[x] > r) surf[x] = Math.max(l, r); }
+    const under = rows - base;
+    for (let x = 0; x < cols; x++) {
+      const dirt = 3 + (fbm(x * .2, 1, 3) > .5 ? 1 : 0), deepY = Math.round(base + under * .56 + (fbm(x * .08, 3, 9) - .5) * 5);
+      for (let y = 0; y < rows; y++) {
+        let m;
+        if (y < surf[x]) m = AIR; else if (y === surf[x]) m = GRASS; else if (y <= surf[x] + dirt) m = DIRT;
+        else { const band = y - deepY; m = band >= 2 ? DEEP : band <= -2 ? STONE : (h2(x, y, 4) < (band + 2) / 4 ? DEEP : STONE); }
+                if (y === rows - 1 || (y === rows - 2 && h2(x, y, 5) > .35) || (y === rows - 3 && h2(x, y, 6) > .8)) m = BED;
+        cell[at(x, y)] = m;
+      }
+    }
+    // caves: a few winding tunnels and open pockets, smoothed so the edges look natural
+    let cave = new Uint8Array(N);
+    for (let x = 0; x < cols; x++) for (let y = surf[x] + 8; y < rows - 4; y++) {
+      const worm = Math.abs(fbm(x * .06, y * .09, 21) - .5) < .03, room = fbm(x * .05, y * .07, 33) > .74;
+      if (worm || room) cave[at(x, y)] = 1;
+    }
+    for (let pass = 0; pass < 3; pass++) {
+      const nx = new Uint8Array(N);
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        let c = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && inb(x + dx, y + dy) && cave[at(x + dx, y + dy)]) c++;
+        const i = at(x, y), ok = y >= surf[x] + 8 && y < rows - 4;
+        nx[i] = ok && (cave[i] ? c >= 3 : c >= 5) ? 1 : 0;
+      }
+      cave = nx;
+    }
+    // drop tiny pockets; fill some caves with water (higher up) or lava (deeper down)
+    const seen = new Uint8Array(N), stack = [];
+    for (let i = 0; i < N; i++) {
+      if (seen[i] || !cave[i]) continue;
+      const comp = []; stack.push(i); seen[i] = 1;
+      while (stack.length) { const j = stack.pop(); comp.push(j); const x = j % cols, y = (j / cols) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (!inb(nx, ny)) continue; const k = at(nx, ny); if (!seen[k] && cave[k]) { seen[k] = 1; stack.push(k); } } }
+      if (comp.length < 16) continue;
+      let maxY = 0, deepish = 0; for (const j of comp) { maxY = Math.max(maxY, (j / cols) | 0); if (cell[j] === DEEP) deepish++; }
+      const isDeep = deepish > comp.length / 2;
+      for (const j of comp) cell[j] = isDeep ? CAVED : CAVE;
+      const fx = comp[0] % cols, fy = (comp[0] / cols) | 0;
+      if (h2(fx, fy, 55) > .45) continue;
+      const level = maxY - 1 - Math.floor(h2(fx, fy, 56) * 2), fluid = isDeep ? LAVA : WATER;
+      for (const j of comp) { const y = (j / cols) | 0, x = j % cols; if (y >= level) cell[j] = fluid; }
+      // fluid only sits where there is a floor or more fluid beneath it
+      for (let pass = 0; pass < 3; pass++) for (const j of comp) { if (cell[j] !== fluid) continue; const x = j % cols, y = (j / cols) | 0, below = cell[at(x, Math.min(rows - 1, y + 1))]; if (below === CAVE || below === CAVED) cell[j] = isDeep ? CAVED : CAVE; }
+    }
+    // ores, as small veins in stone and deepslate
+    for (let x = 0; x < cols; x++) for (let y = surf[x] + 3; y < rows; y++) {
+      const i = at(x, y); if (cell[i] !== STONE && cell[i] !== DEEP) continue;
+      const d = (y - surf[x]) / Math.max(1, rows - surf[x]);
+      for (let k = 0; k < ORES.length; k++) { const o = ORES[k]; if (d < o[2] || d > o[3]) continue; if (vn(x * o[4], y * o[4], 100 + k) > o[5]) { ore[i] = k + 1; break; } }
+    }
+    // oak trees on the hills: a short trunk under a rounded canopy
+    const spots = []; if (TREES === 'all' && cols >= 24) spots.push(.16); if (TREES !== 'none' && cols >= 24) spots.push(.8); if (TREES !== 'none' && cols >= 70) spots.push(.9);
+    for (const s of spots) {
+      let tx = Math.round(cols * s); if (tx < 3 || tx > cols - 4) continue;
+      for (const dx of [0, 1, -1, 2, -2]) { const x = tx + dx; if (x > 2 && x < cols - 3 && surf[x - 1] === surf[x] && surf[x + 1] === surf[x]) { tx = x; break; } }
+      const ground = surf[tx], trunk = 6 + (h2(tx, 1, 8) > .5 ? 1 : 0), top = ground - trunk; // top = highest trunk block
+      for (let y = top; y < ground; y++) if (y >= 0) cell[at(tx, y)] = LOG;
+      const layers = [[-1, 1], [0, 1], [1, 2], [2, 2]], trimL = h2(tx, 2, 9) < .5; // [row offset from trunk top, half width]
+      for (const [dy, w] of layers) for (let dx = -w; dx <= w; dx++) {
+        const x = tx + dx, y = top + dy; if (!inb(x, y)) continue;
+        if (dy === 2 && dx === (trimL ? -2 : 2)) continue; // trim one lower corner so the canopy isn't a perfect box
+        if (dy === -1 && dx === (trimL ? 1 : -1)) continue;
+        if (cell[at(x, y)] === AIR || cell[at(x, y)] === LOG) cell[at(x, y)] = LEAF;
+      }
+    }
+    for (let x = 0; x < cols; x++) { const y = surf[x] - 1; if (y < 0 || cell[at(x, y)] !== AIR) continue; const r = h2(x, y, 12); if (r < .14) cell[at(x, y)] = TUFT; else if (r < .17) cell[at(x, y)] = POPPY; else if (r < .2) cell[at(x, y)] = DANDY; }
+    return { cols, rows, cell, ore };
+  }
+
+  // gentle, low-contrast textures: a base colour with soft clumps of lighter and darker pixels
+  const tone = (c, f) => [c[0] * f, c[1] * f, c[2] * f];
+  function speck(c, X, Y, s, amt) { const v = (h2(X >> 1, Y >> 1, s) - .5) * amt + (h2(X, Y, s + 1) - .5) * amt * .5; return tone(c, 1 + v); }
+  const C = { stone: [126, 126, 128], deep: [76, 76, 82], dirt: [134, 96, 66], grass: [96, 160, 58], granite: [152, 108, 90], diorite: [142, 144, 142], bed: [70, 70, 70],
+    water: [48, 96, 210], lava: [226, 110, 24], log: [106, 82, 50], leaf: [62, 126, 44] };
+  function paint(gr) {
+    const { cols, rows, cell, ore } = gr, W = cols * T, H = rows * T, img = new ImageData(W, H), d = img.data;
+    const put = (x, y, c) => { const o = (y * W + x) * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255; };
+    const get = (x, y) => (x < 0 || y < 0 || x >= cols || y >= rows) ? STONE : cell[y * cols + x];
+    const open = m => m === CAVE || m === CAVED || m === AIR;
+    for (let by = 0; by < rows; by++) for (let bx = 0; bx < cols; bx++) {
+      const m = cell[by * cols + bx]; if (m === AIR) continue;
+      const above = get(bx, by - 1), left = get(bx - 1, by), right = get(bx + 1, by);
+      for (let py = 0; py < T; py++) for (let px = 0; px < T; px++) {
+        const X = bx * T + px, Y = by * T + py;
+        let c;
+        switch (m) {
+          case GRASS: c = py < 2 || (py === 2 && h2(X, 0, 2) < .4) ? speck(C.grass, X, Y, 2, .16) : speck(C.dirt, X, Y, 3, .18); break;
+          case DIRT: c = speck(C.dirt, X, Y, 3, .18); break;
+          case STONE: c = speck(C.stone, X, Y, 4, .12); break;
+          case GRANITE: c = speck(C.granite, X, Y, 5, .14); break;
+          case DIORITE: c = speck(C.diorite, X, Y, 6, .1); break;
+          case DEEP: c = tone(speck(C.deep, X, Y, 7, .12), py % 4 === 0 ? .92 : 1); break;
+          case BED: c = speck(C.bed, X, Y, 8, .7); break;
+          case CAVE: case CAVED: { // dark back wall, darker near the ceiling for a little depth
+            const base = m === CAVE ? tone(C.stone, .44) : tone(C.deep, .58); let f = 1;
+            if (!open(above) && above !== WATER && above !== LAVA) f -= (T - py) / T * .25;
+            c = speck(tone(base, f), X, Y, 9, .1); break; }
+          case WATER: c = above !== WATER && py < 1 ? [110, 160, 245] : speck(C.water, X >> 1, Y, 10, .12); break;
+          case LAVA: c = above !== LAVA && py < 1 ? [255, 210, 90] : speck(C.lava, X, Y >> 1, 11, .3); break;
+          case LOG: c = tone(C.log, (px === 2 || px === 5) ? .82 : 1 + (h2(px, Y >> 1, 12) - .5) * .12); if (px === 0 || px === T - 1) c = tone(C.log, .72); break;
+          case LEAF: { let f = 1 + (h2(X >> 1, Y >> 1, 13) - .5) * .3; if (get(bx, by + 1) !== LEAF && py >= T - 2) f *= .82; if (above !== LEAF && py < 2) f *= 1.1; c = tone(C.leaf, f); break; }
+          case TUFT: { const on = py >= 4 && ((px === 1 && py >= 5) || (px === 3 && py >= 3) || (px === 5 && py >= 4) || (px === 6 && py >= 6)); if (!on) continue; c = tone(C.grass, .9 + (px % 3) * .08); break; }
+          case POPPY: case DANDY: { const stem = px === 4 && py >= 4, head = px >= 3 && px <= 5 && py >= 2 && py <= 3; if (!stem && !head) continue; c = stem ? [70, 136, 40] : m === POPPY ? [214, 38, 36] : [246, 214, 50]; break; }
+        }
+        // a thin dark line where solid ground meets an open cave, so cave edges read cleanly
+        if ((m === STONE || m === DEEP || m === GRANITE || m === DIORITE || m === DIRT) && ((py === 0 && open(above) && above !== AIR) || (px === 0 && open(left) && left !== AIR) || (px === T - 1 && open(right) && right !== AIR))) c = tone(c, .7);
+        put(X, Y, c);
+      }
+      const o = ore[by * cols + bx];
+      if (o) { // four small clumps with a highlight pixel
+        const [col, hi] = ORES[o - 1];
+        for (let k = 0; k < 4; k++) { const cx = 1 + Math.floor(h2(bx, by, 40 + k) * (T - 3)), cy = 1 + Math.floor(h2(bx, by, 50 + k) * (T - 3)), X = bx * T + cx, Y = by * T + cy;
+          put(X, Y, col); put(X + 1, Y, col); put(X, Y + 1, tone(col, .85)); put(X + 1, Y + 1, k % 2 ? hi : col); }
+      }
+    }
+    world.width = W; world.height = H; world.getContext('2d').putImageData(img, 0, 0);
+  }
+
+  // ---- sky: gradient, sun and moon on an arc, stars, clouds ----
+  let W = 0, skyH = 0, dpr = 1, clouds = [], stars = [], last = 0, running = false, visible = true, lastShade = -1;
+  // starts at midday on the first page, then carries on as you move between pages (same browser tab)
+  let start = Date.now(); try { const v = +sessionStorage.getItem('ch.sky0'); if (v && Date.now() - v < 6 * 3600e3) start = v; else sessionStorage.setItem('ch.sky0', String(start)); } catch {}
+  const t0 = performance.now() - (Date.now() - start);
+  const mix = (a, b, f) => a.map((v, i) => v + (b[i] - v) * f), rgb = c => `rgb(${c.map(Math.round).join(',')})`;
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  function makeCloud(layer, x) {
+    const c = [8, 11, 15][layer], gw = 6 + Math.floor(Math.random() * 9), gh = 2 + Math.floor(Math.random() * 3), cells = [];
+    for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
+      const edge = j === 0 ? Math.random() < .35 || i === 0 || i === gw - 1 : (i === 0 || i === gw - 1) && Math.random() < .5;
+      if (!edge) cells.push([i, j]);
+    }
+    const y = 18 + Math.random() * Math.max(40, skyH * .5 - 40) * (layer === 0 ? .7 : 1);
+    return { layer, c, gw, gh, cells, x: x ?? Math.random() * W, y, v: [7, 13, 22][layer] * (.85 + Math.random() * .3) };
+  }
+  function layoutSky() {
+    dpr = Math.min(2, devicePixelRatio || 1);
+    sky.width = Math.round(W * dpr); sky.height = Math.round(skyH * dpr);
+    const n = Math.max(4, Math.round(W / 210));
+    clouds = Array.from({ length: n }, (_, i) => makeCloud(i % 3)).sort((a, b) => a.layer - b.layer);
+    stars = Array.from({ length: Math.round(W * skyH / 9000) }, () => ({ x: Math.random() * W, y: Math.random() * skyH * .7, s: Math.random() < .2 ? 3 : 2, p: Math.random() * 6.28 }));
+  }
+  function phase(now) { // 0 = midday ... 0.5 = midnight ... 1 = midday again
+    if (reduce.matches) return 0;
+    return ((now - t0) / (2 * HALF_DAY)) % 1;
+  }
+  function drawSky(now) {
+    const g = sky.getContext('2d'), p = phase(now), ang = p * Math.PI * 2;
+    // darkness eases in over the first 10 minutes and out over the next 10; the sunset glow follows the sun
+    const elev = Math.cos(ang), night = (1 - Math.cos(p * Math.PI * 2)) / 2, dusk = Math.max(0, 1 - Math.abs(elev) / .5) ** 1.5;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // sky gradient: blue day, warm sunset or sunrise, deep blue night
+    const top = mix(mix([111, 189, 227], [7, 13, 31], night), [70, 80, 140], dusk * .25);
+    const mid = mix(mix([166, 220, 239], [21, 35, 74], night), [214, 140, 150], dusk * .45);
+    const bot = mix(mix([196, 233, 244], [35, 51, 92], night), [246, 168, 92], dusk * .75);
+    const gr = g.createLinearGradient(0, 0, 0, skyH); gr.addColorStop(0, rgb(top)); gr.addColorStop(.6, rgb(mid)); gr.addColorStop(.9, rgb(bot));
+    g.fillStyle = gr; g.fillRect(0, 0, W, skyH);
+    if (night > .02) for (const s of stars) { g.globalAlpha = night * (.5 + .4 * Math.sin(now / 900 + s.p)); g.fillStyle = '#e8eeff'; g.fillRect(Math.round(s.x), Math.round(s.y), s.s, s.s); }
+    g.globalAlpha = 1;
+    // sun and moon ride opposite sides of a wide arc; they set behind the hills
+    const S = Math.max(40, Math.min(64, W * .05)), cx = W * .6, cy = skyH, rx = W * .42, ry = skyH - 96;
+    const body = (a, draw) => { const x = cx + rx * Math.sin(a) - S / 2, y = cy - ry * Math.cos(a) - S / 2; if (y < skyH) draw(Math.round(x), Math.round(y)); };
+    body(ang, (x, y) => { g.fillStyle = `rgba(255,${Math.round(240 - dusk * 60)},${Math.round(200 - dusk * 110)},.3)`; g.fillRect(x - S * .25, y - S * .25, S * 1.5, S * 1.5);
+      g.fillStyle = rgb(mix([255, 246, 184], [255, 196, 110], dusk)); g.fillRect(x, y, S, S); g.fillStyle = rgb(mix([255, 230, 107], [255, 150, 70], dusk)); g.fillRect(x + S * .15, y + S * .15, S * .7, S * .7); });
+    body(ang + Math.PI, (x, y) => { g.fillStyle = 'rgba(220,228,255,.08)'; g.fillRect(x - S * .25, y - S * .25, S * 1.5, S * 1.5); g.fillStyle = '#dfe5f2'; g.fillRect(x, y, S, S);
+      g.fillStyle = '#b9c2d6'; const q = S / 8; [[1, 1, 2], [5, 2, 1], [3, 5, 2], [6, 6, 1]].forEach(([i, j, s]) => g.fillRect(x + i * q, y + j * q, s * q, s * q)); });
+    // clouds pick up the light: white by day, peach at sunset, grey-blue at night
+    const cTop = mix(mix([255, 255, 255], [120, 132, 168], night), [255, 200, 170], dusk * .6), cBot = mix(mix([227, 237, 243], [92, 104, 140], night), [236, 160, 140], dusk * .6);
+    for (const cl of clouds) {
+      const c = cl.c; g.globalAlpha = [.55, .75, .92][cl.layer] * (1 - night * .55);
+      g.fillStyle = rgb(cTop); for (const [i, j] of cl.cells) if (j < cl.gh - 1) g.fillRect(Math.round(cl.x + i * c), Math.round(cl.y + j * c), c, c);
+      g.fillStyle = rgb(cBot); for (const [i, j] of cl.cells) if (j === cl.gh - 1) g.fillRect(Math.round(cl.x + i * c), Math.round(cl.y + j * c), c, c);
+    }
+    g.globalAlpha = 1;
+    // the ground and the headline follow the light
+    const shade = Math.round((1 - night * .42) * 100) / 100;
+    if (shade !== lastShade) { lastShade = shade; world.style.filter = shade < 1 ? `brightness(${shade}) saturate(${Math.round((1 - night * .12) * 100) / 100})` : ''; if (pcv) pcv.style.filter = world.style.filter; }
+    hero.classList.toggle('night', night > .42);
+  }
+  function tick(now) {
+    if (!running) return;
+    const dt = Math.min(.1, (now - (last || now)) / 1000); last = now;
+    if (!reduce.matches) for (let k = 0; k < clouds.length; k++) { const cl = clouds[k]; cl.x += cl.v * dt; if (cl.x > W + 10) clouds[k] = makeCloud(cl.layer, -cl.gw * cl.c - Math.random() * 120); }
+    drawSky(now); stepPlayer(dt); drawPlayer(); requestAnimationFrame(tick);
+  }
+  function setRunning() {
+    const want = visible && !document.hidden;
+    if (want && !running) { running = true; last = 0; requestAnimationFrame(tick); }
+    else if (!want) { running = false; drawSky(performance.now()); }
+  }
+
+  // ---- the explorer: a small original character you can run and jump with the arrow keys ----
+  let grid = null;
+  const P = { x: 0, y: 0, vx: 0, vy: 0, w: 12, h: 34, face: 1, ground: false, step: 0, placed: false };
+  const keys = { left: false, right: false, jump: false };
+  const SOLID = new Set([GRASS, DIRT, STONE, DEEP, BED]);
+  const solidAt = (px, py) => { if (!grid) return false; const bx = Math.floor(px / B), by = Math.floor(py / B);
+    if (by < 0) return false; if (bx < 0 || bx >= grid.cols || by >= grid.rows) return true; return SOLID.has(grid.cell[by * grid.cols + bx]); };
+  const hits = (x, y) => { // does a player box with feet at (x, y) overlap ground?
+    const l = x - P.w / 2 + .5, r = x + P.w / 2 - .5, t = y - P.h + .5, b = y - .5;
+    for (let yy = t; yy <= b + B; yy += B) { const cy = Math.min(yy, b); if (solidAt(l, cy) || solidAt(r, cy)) return true; if (cy === b) break; }
+    return false; };
+  function surfaceY(x) { for (let y = 0; y < (grid ? grid.rows * B : 0); y += B) if (solidAt(x, y + 1)) return y; return skyH - B * 4; }
+  function placePlayer() {
+    if (!grid) return;
+    if (!P.placed) { P.x = Math.round(W * .36); P.y = surfaceY(P.x); P.placed = true; }
+    P.x = Math.max(P.w / 2, Math.min(W - P.w / 2, P.x));
+    let guard = 0; while (hits(P.x, P.y) && guard++ < 200) P.y -= 1; // pushed out if the ground moved
+  }
+  function stepPlayer(dt) {
+    if (!grid || !P.placed) return;
+    const RUN = 120, ACC = 900, GRAV = 1500, JUMP = 360;
+    const want = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    if (want) { P.vx += want * ACC * dt; P.vx = Math.max(-RUN, Math.min(RUN, P.vx)); P.face = want; }
+    else { const f = ACC * 1.4 * dt; P.vx = Math.abs(P.vx) <= f ? 0 : P.vx - Math.sign(P.vx) * f; }
+    if (keys.jump && P.ground) { P.vy = -JUMP; P.ground = false; }
+    P.vy = Math.min(900, P.vy + GRAV * dt);
+    // move one axis at a time, a pixel at a time, so blocks stop you cleanly
+    let dx = P.vx * dt; const sx = Math.sign(dx);
+    while (dx !== 0) { const st = Math.abs(dx) > 1 ? sx : dx; if (hits(P.x + st, P.y) || P.x + st < P.w / 2 || P.x + st > W - P.w / 2) { P.vx = 0; break; } P.x += st; dx -= st; }
+    let dy = P.vy * dt; const sy = Math.sign(dy); P.ground = false;
+    while (dy !== 0) { const st = Math.abs(dy) > 1 ? sy : dy; if (hits(P.x, P.y + st)) { if (sy > 0) P.ground = true; P.vy = 0; break; } P.y += st; dy -= st; }
+    if (!P.ground && P.vy >= 0 && hits(P.x, P.y + 1)) P.ground = true;
+    P.step = P.ground && P.vx !== 0 ? P.step + Math.abs(P.vx) * dt : 0;
+  }
+  function drawPlayer() {
+    if (!pcv) return;
+    const g = pcv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, skyH);
+    if (!P.placed) return;
+    const u = 2, fx = Math.round(P.x), fy = Math.round(P.y), f = P.face;
+    const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(f > 0 ? fx + x * u : fx - (x + w) * u, fy + y * u, w * u, h * u); };
+    const swing = P.ground ? Math.round(Math.sin(P.step / 7) * 2) : 1, air = !P.ground;
+    // back arm and leg, then body, then front arm and leg (side view, facing f)
+    R(-1 - swing, -6, 2, 6, '#3b3027');
+    R(-1 - swing, -1, 2, 1, '#5a3b22');
+    R(-1 + swing - (air ? 1 : 0), -11, 2, 5, '#3f6b3a');
+    R(-2, -12, 4, 7, '#4e8a47'); R(-2, -7, 4, 1, '#6b4a2b'); // jacket, belt
+    R(-1 + swing, -6, 2, 6, '#4a3c30'); R(-1 + swing, -1, 2, 1, '#6b4426');
+    R(-1 - swing + (air ? 2 : 0), -11, 2, 5, '#5a9a52'); R(-1 - swing + (air ? 2 : 0), -7, 2, 1, '#e0b48c');
+    R(-2, -16, 4, 4, '#e0b48c'); R(1, -15, 1, 1, '#1d2328'); // head, eye
+    R(-3, -17, 7, 1, '#7a5230'); R(-2, -19, 4, 2, '#8d6038'); R(-2, -18, 4, 1, '#b3261e'); // hat with a red band
+  }
+  const typing = e => { const t = e.target; return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)); };
+  const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump' };
+  addEventListener('keydown', e => { const k = map[e.key]; if (!k || typing(e) || e.altKey || e.ctrlKey || e.metaKey || !visible || !pcv) return; keys[k] = true; e.preventDefault(); });
+  addEventListener('keyup', e => { const k = map[e.key]; if (k) keys[k] = false; });
+  addEventListener('blur', () => { keys.left = keys.right = keys.jump = false; });
+
+  // ---- layout: size everything to the page ----
+  let key = '';
+  function layout() {
+    const w = document.documentElement.clientWidth;
+    const heroBottom = FIXED ? Math.min(Math.round(hero.getBoundingClientRect().bottom + scrollY), Math.round(innerHeight * .62)) : hero.offsetTop + hero.offsetHeight;
+    const docH = FIXED ? Math.max(innerHeight, (screen && screen.height) || 0) : main.offsetTop + main.offsetHeight;
+    const cols = Math.ceil(w / B), rows = Math.ceil(docH / B), base = Math.round(heroBottom / B) - 1;
+    if (!FIXED) scene.style.height = docH + 'px';
+    if (w !== W || skyH !== heroBottom + B * 4) { W = w; skyH = heroBottom + B * 4; sky.style.height = skyH + 'px'; layoutSky(); drawSky(performance.now());
+      if (pcv) { pcv.width = Math.round(W * dpr); pcv.height = Math.round(skyH * dpr); pcv.style.height = skyH + 'px'; } }
+    const k = cols + 'x' + rows + '@' + base; if (k === key) return; key = k;
+    grid = generate(cols, rows, base); paint(grid); placePlayer();
+    world.style.width = cols * B + 'px'; world.style.height = rows * B + 'px';
+  }
+  let pending = 0; const soon = () => { cancelAnimationFrame(pending); pending = requestAnimationFrame(layout); };
+  layout();
+  new ResizeObserver(soon).observe(main); addEventListener('resize', soon);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(soon);
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; setRunning(); }).observe(sky);
+  document.addEventListener('visibilitychange', setRunning);
+  reduce.addEventListener('change', setRunning); darkQ.addEventListener('change', () => drawSky(performance.now()));
+  // preview hook for testing: ?sky=0.25 freezes the cycle at that point (0 midday, 0.5 midnight)
+  const fix = new URLSearchParams(location.search).get('sky'); if (fix !== null && !isNaN(+fix)) { const f = +fix; phase = () => f; }
+  setRunning();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ore Finder · Chunk Hub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@900&family=Carlito:wght@400;700&display=swap">
+<style>
+/* Layout: same shell as Seed Map. Full-bleed map, docked panel left (bottom sheet on phones), results list inside the panel. */
+:root {
+  --bg: #e9ecef;
+  --panel: #f7f8f9;
+  --panel-2: #eef1f3;
+  --line: #d3d9de;
+  --fg: #1b2228;
+  --muted: #5d6973;
+  --accent: #b3261e;      /* redstone */
+  --accent-fg: #ffffff;
+  --ok: #2f7d4f;
+  --chip: #ffffff;
+  --shadow: 0 1px 2px rgba(20,30,40,.08), 0 6px 24px rgba(20,30,40,.10);
+  --f-display: "CH Display", "Franklin Gothic Heavy", "Libre Franklin", "Arial Black", sans-serif;
+  --f-body: Calibri, "Carlito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: Calibri, "Carlito", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1418; --panel: #161c21; --panel-2: #1d252b; --line: #2b353d; --fg: #e3e8ec; --muted: #8d9aa4;
+  --accent: #e2574c; --accent-fg: #1a0705; --ok: #5cc287; --chip: #1f282f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1418; --panel: #161c21; --panel-2: #1d252b; --line: #2b353d; --fg: #e3e8ec; --muted: #8d9aa4;
+  --accent: #e2574c; --accent-fg: #1a0705; --ok: #5cc287; --chip: #1f282f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark; }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; overflow: hidden; }
+* { box-sizing: border-box; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-columns: 320px 1fr; height: 100%; }
+.panel { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; z-index: 3; }
+.panel-scroll { overflow-y: auto; padding-block: 18px 24px; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: 18px; display: flex; flex-direction: column; gap: 20px; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.brand h1 { font-family: var(--f-display); font-weight: 900; font-size: 20px; letter-spacing: .02em; margin: 0; line-height: 1; }
+.brand h1 span { color: var(--accent); }
+.brand small { color: var(--muted); font-size: 12px; }
+
+.group { display: flex; flex-direction: column; gap: 8px; }
+.label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+.label button { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12px; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; }
+
+.seed-row { display: flex; gap: 6px; }
+.field { background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; min-width: 0; }
+.field.mono { font-family: var(--f-mono); font-size: 13px; }
+.btn { background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+.hint { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0; }
+.hint code { font-family: var(--f-mono); font-size: 11.5px; }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 2px; gap: 2px; }
+.seg button { border: 0; background: none; border-radius: 5px; padding: 6px 4px; cursor: pointer; color: var(--muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--chip); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.check { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.check input { accent-color: var(--accent); margin: 0; }
+
+.layers { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+.layer { display: flex; align-items: center; gap: 8px; padding: 4px 2px; cursor: pointer; border-radius: 4px; user-select: none; min-width: 0; }
+.layer input { accent-color: var(--accent); margin: 0; flex: none; }
+.layer .sw { width: 14px; height: 14px; border-radius: 4px; flex: none; display: grid; place-items: center; font: 600 9px/1 var(--f-mono); color: #fff; }
+.ico { width: 22px; height: 22px; image-rendering: pixelated; flex: none; margin: -2px 0; }
+.ico.lg { width: 44px; height: 44px; margin: -8px 0; }
+.layer span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer.off { opacity: .4; cursor: not-allowed; }
+.note { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.note b { color: var(--fg); font-weight: 600; }
+
+.mapwrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #2a3138; touch-action: none; }
+canvas#map { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; image-rendering: pixelated; }
+canvas#map.drag { cursor: grabbing; }
+
+.zoom { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+.zoom button { width: 36px; height: 36px; border: 0; background: none; cursor: pointer; font-size: 18px; line-height: 1; }
+.zoom button + button { border-top: 1px solid var(--line); }
+.zoom button:hover { background: var(--panel-2); }
+
+.readout { position: absolute; left: 12px; right: 60px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; font-family: var(--f-mono); font-size: 12px; box-shadow: var(--shadow); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chip .k { color: var(--muted); margin-right: 4px; }
+.chip .bsw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; border: 1px solid rgba(0,0,0,.25); }
+
+.status { position: absolute; left: 50%; top: calc(12px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 12px; box-shadow: var(--shadow); color: var(--muted); white-space: nowrap; }
+
+.pop { position: absolute; z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 10px 12px; min-width: 200px; max-width: 260px; display: flex; flex-direction: column; gap: 6px; }
+.pop h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.pop .coords { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.pop .acts { display: flex; gap: 6px; }
+.pop .acts .btn { padding: 5px 8px; font-size: 12px; }
+.pop .x { position: absolute; top: 6px; right: 6px; border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 16px; }
+
+
+.ore-sw { width: 16px; height: 16px; flex: none; image-rendering: pixelated; border-radius: 3px; }
+.xyz { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.results { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; background: var(--chip); overflow: hidden; }
+.res { display: grid; grid-template-columns: 16px 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; cursor: pointer; width: 100%; }
+.res:first-child { border-top: 0; }
+.res:hover { background: var(--panel-2); }
+.res.mined { opacity: .45; }
+.res .nm { font-weight: 600; }
+.res .co { grid-column: 2; font-family: var(--f-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.res .ds { grid-row: 1 / span 2; grid-column: 3; text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
+.res .ds b { display: block; color: var(--fg); font-size: 13px; }
+.empty { padding: 12px; color: var(--muted); font-size: 12px; }
+
+.sheet-toggle { display: none; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .mapwrap { grid-row: 1; }
+  .panel { grid-row: 2; border-right: 0; border-top: 1px solid var(--line); max-height: 46vh; }
+  .panel.collapsed .panel-scroll > :not(.brand) { display: none; }
+  .panel-scroll { padding-block: 12px 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 16px; }
+  .sheet-toggle { display: inline-block; }
+  .readout { right: 12px; }
+  .readout .chip.opt { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.site-head { height: var(--head-h); flex: none; display: flex; align-items: center; gap: 18px; background: var(--panel); border-bottom: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); position: relative; z-index: 6; }
+.site-head .home { font-family: var(--f-display); font-size: 15px; color: var(--fg); text-decoration: none; white-space: nowrap; }
+.site-head .home span { color: var(--accent); }
+.site-head nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; }
+.site-head nav a { color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 6px; white-space: nowrap; font-weight: 600; }
+.site-head nav a:hover { color: var(--fg); background: var(--panel-2); }
+.site-head nav a[aria-current="page"] { color: var(--fg); background: var(--panel-2); }
+body { display: flex; flex-direction: column; }
+.app { height: auto !important; flex: 1; min-height: 0; }
+
+/* Ad slots: fixed-size boxes so pages don't jump when an ad loads. Replace the placeholder inside with the ad network's code. */
+.ad-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-inline: auto; }
+.ad-slot .ad-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ad-slot .ad-box { width: 100%; display: grid; place-items: center; background: var(--panel-2); border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; overflow: hidden; }
+.ad-rect .ad-box { width: 300px; max-width: 100%; height: 250px; }
+.ad-leader { width: 100%; max-width: 728px; }
+.ad-leader .ad-box { height: 90px; }
+@media (max-width: 760px) { .ad-leader .ad-box { height: 100px; max-width: 320px; } .ad-leader { max-width: 320px; } }
+
+.app { grid-template-columns: 336px 1fr; }
+@media (max-width: 760px) { .app { grid-template-columns: 1fr; } }
+.panel .ad-slot { margin-top: 4px; }
+
+.site-head { gap: 14px; }
+.more { position: relative; flex: none; }
+.more summary { list-style: none; cursor: pointer; color: var(--muted); padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; white-space: nowrap; user-select: none; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary:hover, .more[open] summary, .more.current summary { color: var(--fg); background: var(--panel-2); }
+.more .menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; z-index: 40; }
+.more .menu a { color: var(--fg); text-decoration: none; padding: 8px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; }
+.more .menu a:hover, .more .menu a[aria-current="page"] { background: var(--panel-2); }
+@media (max-width: 760px) { .site-head nav, .site-head .more.lists { display: none; } .more .menu a.primary { display: block; } }
+.more .menu a.primary { display: none; }
+@media (max-width: 760px) { .more .menu a.primary { display: block; } .more .menu .sep { display: block; } }
+.more .menu .sep { display: none; height: 1px; background: var(--line); margin: 4px 6px; }
+/* Floating pill header: dark glass bar with logo, tool links, a Tools menu and a button on the right. */
+:root { --head-h: 72px; }
+.site-head { height: 56px; width: min(1240px, calc(100% - 24px)); margin: 8px auto; padding: 0 8px 0 20px; gap: 4px; border-radius: 999px;
+  background: rgba(16,16,18,.86); border: 1px solid rgba(255,255,255,.09); border-bottom: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  position: sticky; top: 8px; z-index: 30; flex: none; color: #f4f4f5; font-family: var(--f-body); }
+.site-head .home { display: flex; align-items: center; gap: 9px; color: #fff; font-family: var(--f-body); font-weight: 700; font-size: 19px; letter-spacing: -.01em; margin-right: 16px; text-decoration: none; }
+.site-head .home span { color: #fff; }
+.site-head .logo { flex: none; }
+.site-head nav { display: flex; gap: 2px; }
+.site-head nav a, .site-head .more summary { color: #a1a1aa; background: none; font-weight: 500; font-size: 15px; line-height: 22px; padding: 8px 14px; border-radius: 999px; transition: color .15s, background-color .15s; }
+.site-head nav a:hover, .site-head .more summary:hover, .site-head .more[open] summary { color: #fff; background: rgba(255,255,255,.06); }
+.site-head nav a[aria-current="page"], .site-head .more.current summary { color: #fff; background: none; }
+.site-head .more summary { display: flex; align-items: center; gap: 5px; position: relative; }
+.site-head .more .chev { transition: transform .15s; }
+.site-head .more[open] .chev { transform: rotate(180deg); }
+.site-head .more .dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; margin-left: 3px; box-shadow: 0 0 8px rgba(255,59,48,.7); }
+.site-head .more .menu { left: 0; right: auto; top: calc(100% + 12px); min-width: 200px; background: #141416; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.45); padding: 6px; }
+.site-head .more .menu a { color: #d4d4d8; font-weight: 500; border-radius: 9px; }
+.site-head .more .menu a:hover, .site-head .more .menu a[aria-current="page"] { color: #fff; background: rgba(255,255,255,.07); }
+.site-head .more .menu .sep { background: rgba(255,255,255,.09); }
+.site-head .cta { margin-left: auto; display: flex; align-items: center; gap: 8px; color: #e4e4e7; text-decoration: none; font-weight: 600; font-size: 15px; padding: 9px 16px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.04); white-space: nowrap; transition: background-color .15s, border-color .15s; }
+.site-head .cta:hover, .site-head .cta[aria-current="page"] { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); color: #fff; }
+.site-head :focus-visible { outline: 2px solid #ff3b30; outline-offset: 2px; }
+@media (max-width: 760px) { .site-head nav, .site-head .more.lists { display: none; } .site-head { padding-left: 16px; } .site-head .home { font-size: 17px; margin-right: 4px; } .site-head .more .menu { left: auto; right: -90px; } }
+@media (max-width: 400px) { .site-head .cta span { display: none; } .site-head .cta { padding: 9px 11px; } }
+.site-head .cta { margin-right: 6px; }
+.site-head .account { position: relative; flex: none; margin-left: auto; }
+.site-head .signin { display: flex; align-items: center; gap: 10px; background: none; border: 0; color: #e4e4e7; font: inherit; font-weight: 500; font-size: 15px; padding: 4px 14px 4px 4px; border-radius: 999px; cursor: pointer; transition: background-color .15s; }
+.site-head .signin:hover, .site-head .signin[aria-expanded="true"] { background: rgba(255,255,255,.07); color: #fff; }
+.site-head .avatar { width: 36px; height: 36px; border-radius: 50%; background: #3f3f46; color: #8e8e96; display: grid; place-items: end center; overflow: hidden; flex: none; }
+.site-head .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.site-head .signin.in .avatar { place-items: center; }
+.site-head .signin.in .lbl { display: none; }
+.site-head .signin.in { padding: 4px; }
+.site-head .signin-pop { position: absolute; right: 0; top: calc(100% + 12px); width: 260px; background: #141416; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.45); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.45; color: #a1a1aa; z-index: 40; }
+.site-head .signin-pop[hidden] { display: none; }
+.site-head .signin-pop b { color: #fff; font-size: 15px; }
+@media (max-width: 760px) { .site-head .signin .lbl { display: none; } .site-head .signin { padding: 4px; } .site-head { padding-right: 6px; } }
+@media (max-width: 400px) { .site-head .home span { font-size: 16px; } .site-head .cta { margin-right: 2px; } }
+/* phones: Seed Map and Player Search stay in the bar; everything else moves into the menu (☰) next to the profile picture */
+.site-head .more.burger { display: none; }
+.site-head .more .menu .grp { display: block; padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8e8e96; }
+@media (max-width: 760px) {
+  .site-head { padding: 0 6px 0 14px; gap: 2px; }
+  .site-head nav:not(.after) { display: flex; }
+  .site-head nav:not(.after) a { padding: 8px 9px; font-size: 14px; }
+  .site-head .more.toolmenu, .site-head .more.lists, .site-head nav.after { display: none; }
+  .site-head .home { margin-right: 6px; }
+  .site-head .home span { display: none; }
+  .site-head .more.burger { display: block; }
+  .site-head nav a.k-stats { display: none; }
+  .site-head .more.burger summary { padding: 8px 10px; display: grid; place-items: center; }
+  .site-head .more.burger .menu { left: auto; right: 0; min-width: 230px; max-height: calc(100vh - 90px); overflow-y: auto; }
+  .site-head .more.burger { margin-left: auto; }
+  .site-head .account { margin-left: 2px; }
+  .site-head .more.burger .menu .sep { display: block; height: 1px; background: rgba(255,255,255,.12); margin: 6px 8px; }
+}
+@media (max-width: 340px) { .site-head nav:not(.after) a { padding: 8px 6px; font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .site-head nav a, .site-head .signin, .site-head .more summary, .site-head .cta, .site-head .more .chev { transition: none; } }
+.legal-links a { color: inherit; } .legal-links { white-space: nowrap; }
+
+/* Same world as the home page, fixed behind the tool pages: sky and clouds at the top, ground below.
+   Each page's content sits on a "sheet" so it stays easy to read. */
+html { background: #6f6f6f; }
+body { background: transparent !important; position: relative; }
+body:not(.map-page) { display: flow-root; }
+.scene { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.scene canvas { position: absolute; top: 0; left: 0; display: block; }
+#skyCv { width: 100%; background: #86c9e6; }
+#worldCv { image-rendering: pixelated; image-rendering: crisp-edges; transition: filter 1.5s linear; }
+main, .app { position: relative; z-index: 1; }
+.site-head { z-index: 30; background: rgba(14,20,28,.34); border-color: rgba(255,255,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.12); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); }
+.site-head nav a, .site-head .more summary { color: rgba(255,255,255,.86); text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.site-head nav a:hover, .site-head .more summary:hover, .site-head .more[open] summary { color: #fff; background: rgba(255,255,255,.14); }
+.site-head .home, .site-head .signin { text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.site-head .signin:hover, .site-head .signin[aria-expanded="true"] { background: rgba(255,255,255,.14); }
+.site-head .avatar { background: rgba(255,255,255,.22); color: rgba(255,255,255,.75); }
+section.top[data-scene-hero] { padding-bottom: 72px; }
+section.top[data-scene-hero] h1 { color: #10202a; text-shadow: 0 2px 0 rgba(255,255,255,.35); transition: color 2s ease, text-shadow 2s ease; }
+section.top[data-scene-hero] h1 span { color: #b3261e; }
+section.top[data-scene-hero] .title p { color: #1f3c4a; transition: color 2s ease; }
+section.top[data-scene-hero].night h1 { color: #f2f5f8; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+section.top[data-scene-hero].night h1 span { color: #ff6b5f; }
+section.top[data-scene-hero].night .title p { color: #c8d4e6; }
+section.top[data-scene-hero] .overall { box-shadow: 0 2px 0 rgba(0,0,0,.2), 0 12px 30px rgba(0,0,0,.25); }
+.sheet { background: var(--bg); border-radius: 18px; padding: 24px 24px 4px; margin-bottom: 56px; box-shadow: 0 2px 0 rgba(0,0,0,.25), 0 18px 50px rgba(0,0,0,.35); }
+.sheet > footer { border-top-color: var(--line); }
+@media (max-width: 640px) { .sheet { padding: 16px 12px 2px; border-radius: 14px; margin-inline: -4px; } section.top[data-scene-hero] { padding-bottom: 60px; } }
+/* checklist pages: no sheet, the world shows through; loose text gets a shadow, the filter bar is glass */
+.sheet.clear { background: none; box-shadow: none; padding: 0; border-radius: 0; }
+.sheet.clear .controls { background: rgba(14,20,28,.42); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; top: calc(var(--head-h) + 6px); }
+.sheet.clear .controls .check, .sheet.clear .cat-head, .sheet.clear .cat-head small, .sheet.clear .none, .sheet.clear .ad-slot .ad-label { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+.sheet.clear > footer { background: rgba(12,14,16,.78); color: #d9dee2; border: 0; border-radius: 10px; padding: 16px 20px; margin-bottom: 8px; }
+.sheet.clear > footer .link { color: #d9dee2; }
+.sheet.clear .cat-head { width: fit-content; justify-self: start; background: rgba(12,14,16,.62); padding: 3px 10px; border-radius: 999px; }
+body.map-page .site-head { position: relative; top: 0; }
+body.map-page { margin: 0; }
+/* loose notes that sit straight on the world get light text; notes inside panels keep their normal colour */
+.sheet.clear .note2 { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.85); }
+.sheet.clear :is(.panel-box, .stat, .card, .tbl, .result, .dl, .acct, .row, .modal-card) .note2 { color: var(--muted); text-shadow: none; }
+/* other tool pages: a frosted-glass sheet, the world blurred behind it */
+.sheet.frost { background: color-mix(in srgb, var(--bg) 55%, transparent); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); border: 1px solid rgba(255,255,255,.35); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sheet.frost { background: color-mix(in srgb, var(--bg) 62%, transparent); border-color: rgba(255,255,255,.12); } }
+:root[data-theme="dark"] .sheet.frost { background: color-mix(in srgb, var(--bg) 62%, transparent); border-color: rgba(255,255,255,.12); }
+@font-face { font-family: "CH Display"; src: local("Franklin Gothic Heavy"), local("FranklinGothic-Heavy"), local("Franklin Gothic Demi"); font-weight: 900; font-style: normal; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 900; letter-spacing: 0; }
+</style>
+</head>
+<body class="map-page">
+<div class="scene" data-mode="fixed" data-amp="0" data-trees="none" aria-hidden="true"><canvas id="skyCv"></canvas><canvas id="worldCv"></canvas></div>
+
+<header class="site-head" data-scene-hero><a class="home" href="../index.html"><svg class="logo" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2.5 20.5 7.2 12 12 3.5 7.2z" fill="#ff3b30"/><path d="M3.5 7.2 12 12v9.5l-8.5-4.8z" fill="#f4f4f5"/><path d="M20.5 7.2 12 12v9.5l8.5-4.8z" fill="#a1a1aa"/></svg><span>Chunk Hub</span></a><nav aria-label="Main tools"><a class="k-seed" href="../seed-map/index.html">Seed Map</a><a class="k-player" href="../player/index.html">Player Search</a><a class="k-stats" href="../world-stats/index.html">World Stats</a></nav><details class="more toolmenu current"><summary>Tools <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu"><a class="primary" href="../seed-map/index.html">Seed Map</a><a class="primary" href="../player/index.html">Player Search</a><a class="primary" href="../world-stats/index.html">World Stats</a><a class="primary" href="../advancements/index.html">All Advancements</a><a class="primary" href="../collector/index.html#blocks">All Blocks</a><a class="primary" href="../collector/index.html#mobs">All Mobs</a><a class="primary" href="../downloads/index.html">Downloads</a><span class="sep"></span><a href="../ore-finder/index.html" aria-current="page">Ore Finder</a><a href="../seed-generator/index.html">Seed Generator</a><a href="../slime-chunks/index.html">Slime Chunks</a><a href="../portal-calculator/index.html">Portal Calculator</a><a href="../circle-generator/index.html">Circle Generator</a><a href="../enchanting/index.html">Enchanting Planner</a><a href="../brewing/index.html">Brewing Guide</a><a href="../pixel-art/index.html">Pixel Art Planner</a></div></details><details class="more lists"><summary>Checklists <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu"><a href="../advancements/index.html">All Advancements</a><a href="../collector/index.html#blocks">All Blocks</a><a href="../collector/index.html#mobs">All Mobs</a></div></details><nav class="after" aria-label="Downloads"><a href="../downloads/index.html">Downloads</a></nav><details class="more burger"><summary aria-label="Menu"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></summary><div class="menu"><span class="grp">Tools</span><a href="../world-stats/index.html">World Stats</a><a href="../ore-finder/index.html" aria-current="page">Ore Finder</a><a href="../seed-generator/index.html">Seed Generator</a><a href="../slime-chunks/index.html">Slime Chunks</a><a href="../portal-calculator/index.html">Portal Calculator</a><a href="../circle-generator/index.html">Circle Generator</a><a href="../enchanting/index.html">Enchanting Planner</a><a href="../brewing/index.html">Brewing Guide</a><a href="../pixel-art/index.html">Pixel Art Planner</a><span class="sep"></span><span class="grp">Checklists</span><a href="../advancements/index.html">All Advancements</a><a href="../collector/index.html#blocks">All Blocks</a><a href="../collector/index.html#mobs">All Mobs</a><span class="sep"></span><span class="grp">More</span><a href="../downloads/index.html">Downloads</a><a href="../account/index.html">My account</a></div></details><div class="account"><button type="button" class="signin" aria-haspopup="dialog" aria-expanded="false"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="9" r="4.2" fill="currentColor"/><path d="M3.5 21.5c1.4-4.3 4.6-6.4 8.5-6.4s7.1 2.1 8.5 6.4" fill="currentColor"/></svg></span><span class="lbl">Sign In</span></button><div class="signin-pop" role="dialog" aria-label="Accounts" hidden><b>Accounts are coming soon</b><span>You'll be able to sign in and keep your progress on every device. For now, progress is saved in this browser.</span></div><script defer src="../lib/account-config.js"></script><script defer src="../lib/supabase.js"></script><script defer src="../lib/account.js" data-root="../"></script></div><script>(function(){var h=document.currentScript.parentNode,d=h.querySelectorAll("details");d.forEach(function(x){x.addEventListener("toggle",function(){if(x.open)d.forEach(function(y){if(y!==x)y.open=false;});});});document.addEventListener("click",function(e){d.forEach(function(x){if(x.open&&!x.contains(e.target))x.open=false;});});document.addEventListener("keydown",function(e){if(e.key==="Escape")d.forEach(function(x){x.open=false;});});h.addEventListener("click",function(e){if(e.target.closest(".menu a"))d.forEach(function(x){x.open=false;});});})();</script></header>
+<div class="app">
+  <aside class="panel" id="panel">
+    <div class="panel-scroll">
+      <div class="brand">
+        <h1>Ore<span>Finder</span></h1>
+        <button class="btn sheet-toggle" id="sheetToggle" aria-expanded="true">Hide</button>
+      </div>
+
+      <div class="group">
+        <label class="label" for="seed">Seed <button type="button" id="randomSeed">Random</button></label>
+        <div class="seed-row">
+          <input class="field mono" id="seed" autocomplete="off" spellcheck="false" placeholder="e.g. 8091867987493326313">
+          <button class="btn primary" id="go">Load</button>
+        </div>
+        <p class="hint" id="seedHint">Numbers are used as-is. Text seeds are hashed the same way the game does.</p>
+      </div>
+
+      <div class="group">
+        <div class="label">Edition</div>
+        <div class="seg" id="edition">
+          <button type="button" data-v="java" aria-pressed="true">Java</button>
+          <button type="button" data-v="bedrock" aria-pressed="false">Bedrock</button>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="group">
+          <label class="label" for="version">Version</label>
+          <select class="field" id="version"></select>
+        </div>
+        <div class="group">
+          <div class="label">Dimension</div>
+          <div class="seg" id="dimension">
+            <button type="button" data-v="0" aria-pressed="true">Overworld</button>
+            <button type="button" data-v="-1" aria-pressed="false">Nether</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="note" id="editionNote" hidden></div>
+
+      <div class="group">
+        <div class="label">Ores <button type="button" id="toggleAll">Hide all</button></div>
+        <div class="layers" id="layers"></div>
+      </div>
+
+      <div class="group">
+        <div class="label">Your position <button type="button" id="useCentre">Use map centre</button></div>
+        <div class="xyz">
+          <input class="field mono" id="px" inputmode="numeric" placeholder="X" aria-label="X">
+          <input class="field mono" id="py" inputmode="numeric" placeholder="Y" aria-label="Y">
+          <input class="field mono" id="pz" inputmode="numeric" placeholder="Z" aria-label="Z">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="group">
+          <label class="label" for="radius">Search radius</label>
+          <select class="field" id="radius">
+            <option value="4">4 chunks</option>
+            <option value="8" selected>8 chunks</option>
+            <option value="16">16 chunks</option>
+          </select>
+        </div>
+        <div class="group">
+          <label class="label" for="minSize">Vein size</label>
+          <select class="field" id="minSize">
+            <option value="1">Any</option>
+            <option value="3">3+ blocks</option>
+            <option value="5">5+ blocks</option>
+            <option value="8">8+ blocks</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Nearest veins <button type="button" id="showMined">Show mined</button></div>
+        <div class="results" id="results"><div class="empty">Enter your position to list the closest veins.</div></div>
+      </div>
+
+      <p class="hint">Veins are predicted in your browser from the world seed using the game's ore placement rules, with biomes from <a href="https://github.com/Cubitect/cubiomes" target="_blank" rel="noopener">cubiomes</a> (MIT licence). Positions assume solid stone: caves can remove or shift some veins, especially ores near the surface.</p>
+      <p class="hint" style="font-size:11px">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</p>
+      <div class="ad-slot ad-rect" data-ad-slot="ore-panel"><span class="ad-label">Advertisement</span><div class="ad-box">Ad space · 300 × 250</div></div>
+    </div>
+  </aside>
+
+  <main class="mapwrap" id="mapwrap">
+    <canvas id="map"></canvas>
+    <div class="status" id="status">Loading generator…</div>
+    <div class="zoom">
+      <button type="button" id="zin" aria-label="Zoom in">+</button>
+      <button type="button" id="zout" aria-label="Zoom out">−</button>
+      <button type="button" id="home" aria-label="Centre on your position" title="Centre on your position" style="font-size:13px">⌖</button>
+    </div>
+    <div class="readout">
+      <div class="chip"><span class="k">X</span><span id="rx">0</span> <span class="k" style="margin-left:6px">Z</span><span id="rz">0</span></div>
+      <div class="chip opt"><span class="k">Chunk</span><span id="rc">0, 0</span></div>
+      <div class="chip"><span class="bsw" id="rbsw"></span><span id="rb">—</span></div>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- Versions: [key, label, cubiomes generator id, ore era] ----------
+const JAVA_VERSIONS = [
+  ['26.3','26.3 (latest)',28,20],['26.2','26.2',28,20],['26.1','26.1 – 26.1.2',28,20],['1.21.5','1.21.5 – 1.21.11',28,20],['1.21.4','1.21.4',28,20],
+  ['1.21.2','1.21.2 – 1.21.3',27,20],['1.21','1.21 – 1.21.1',26,20],['1.20.2','1.20.2 – 1.20.6',25,20],['1.20','1.20 – 1.20.1',25,19],
+  ['1.19.3','1.19.3 – 1.19.4',24,19],['1.19','1.19 – 1.19.2',23,19],['1.18','1.18.x',22,18]];
+const verList = () => JAVA_VERSIONS;
+
+// ---------- Ore groups ----------
+const ORES = [
+  { n:'Coal', c:'#3a3a3a', hi:'#6a6a6a', dim:0 }, { n:'Iron', c:'#d8af93', hi:'#f3d7c3', dim:0 },
+  { n:'Gold', c:'#f6d64a', hi:'#fff3a8', dim:'both' }, { n:'Redstone', c:'#e0301e', hi:'#ff7a6a', dim:0 },
+  { n:'Diamond', c:'#4fe0d6', hi:'#c8fff9', dim:0 }, { n:'Lapis', c:'#2f5fd0', hi:'#8fb0ff', dim:0 },
+  { n:'Copper', c:'#e07a3e', hi:'#7fd0b0', dim:0 }, { n:'Emerald', c:'#2fc56b', hi:'#a8f5c4', dim:0 },
+  { n:'Quartz', c:'#ece6dc', hi:'#ffffff', dim:-1 }, { n:'Ancient debris', c:'#6b4a3a', hi:'#a7826c', dim:-1 },
+];
+const oreInDim = (o, dim) => o.dim === 'both' || String(o.dim) === dim;
+
+// Small "ore in stone" swatches drawn from each ore's colours
+// variant: 'normal', 'deep' (dark slate rock) or 'mix' (top half normal, bottom half deep)
+function oreSwatch(i, variant = 'normal', px = 8) {
+  const c = document.createElement('canvas'); c.width = c.height = px;
+  const g = c.getContext('2d'); const o = ORES[i];
+  const stone = i >= 8 ? ['#7a3030', '#5e2222'] : ['#8a8f94', '#6e7378'];
+  const deep = ['#4a4a52', '#36363d'];
+  let s = 1234 + i * 977; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let y = 0; y < px; y++) for (let x = 0; x < px; x++) {
+    const rock = variant === 'deep' || (variant === 'mix' && y >= px / 2) ? deep : stone;
+    g.fillStyle = rnd() < .5 ? rock[0] : rock[1]; g.fillRect(x, y, 1, 1);
+  }
+  const spots = [[1,1],[2,1],[5,2],[6,3],[2,4],[3,5],[5,5],[1,6],[6,6]];
+  spots.forEach(([x, y], k) => { g.fillStyle = k % 3 === 0 ? o.hi : o.c; g.fillRect(x, y, 1, 1); });
+  return c;
+}
+const SWATCH = ORES.map((_, i) => oreSwatch(i).toDataURL());
+const SWATCH_V = { normal: SWATCH, deep: ORES.map((_, i) => oreSwatch(i, 'deep').toDataURL()), mix: ORES.map((_, i) => oreSwatch(i, 'mix').toDataURL()) };
+
+// ---------- State ----------
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('os.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('os.' + k, JSON.stringify(v)); } catch {} },
+};
+const S = {
+  seedText: store.get('seed', '8091867987493326313'),
+  edition: 'java', ver: store.get('ver', '26.3'), mc: 28, era: 20, dim: '0',
+  ores: store.get('ores', [false, false, true, false, true, false, false, true, true, true]),
+  cx: 0, cz: 0, ppb: 1,
+  pos: store.get('pos', null), radius: 8, minSize: 1,
+};
+let world = null, gen = 0, showMined = false;
+let mined = new Set(store.get('mined', []));
+
+// ---------- Seed parsing (same as Seed Map) ----------
+function javaHash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; return BigInt(h); }
+function parseSeed(t) {
+  t = t.trim(); if (t === '') return null;
+  if (/^[+-]?\d+$/.test(t)) { const v = BigInt(t); if (v >= -(1n << 63n) && v < (1n << 63n)) return v; }
+  return javaHash(t);
+}
+function seedParts(v) { const u = BigInt.asUintN(64, v); return { hi: Number(u >> 32n), lo: Number(u & 0xffffffffn) }; }
+
+// ---------- Workers ----------
+const NW = Math.max(1, Math.min(6, (navigator.hardwareConcurrency || 4) - 1));
+const workers = []; let jobSeq = 0; const queue = []; const inflight = new Map();
+function spawnWorkers() {
+  for (let i = 0; i < NW; i++) {
+    const w = new Worker('worker.js'); w.busy = false;
+    w.onmessage = ev => { w.busy = false; const j = inflight.get(ev.data.job); inflight.delete(ev.data.job); if (j && j.gen === gen) j.cb(ev.data); pump(); };
+    w.onerror = () => { w.busy = false; setStatus('The generator failed to load. Reload the page to try again.'); };
+    workers.push(w);
+  }
+}
+function submit(msg, cb, prio = 0) { queue.push({ msg, cb, prio, gen }); pump(); }
+function pump() {
+  for (const w of workers) {
+    if (w.busy || !queue.length) continue;
+    let bi = -1;
+    for (let i = 0; i < queue.length; i++) {
+      if (queue[i].gen !== gen) { queue.splice(i--, 1); continue; }
+      if (bi < 0 || queue[i].prio < queue[bi].prio) bi = i;
+    }
+    if (bi < 0) break;
+    const j = queue.splice(bi, 1)[0]; const job = ++jobSeq;
+    inflight.set(job, j); w.busy = true; w.postMessage({ ...j.msg, job, p: world.p });
+  }
+  updateStatus();
+}
+
+// ---------- Caches ----------
+let tiles = new Map(), oreBlocks = new Map(), listBlocks = new Map();
+const TILE = 128, OB = 8; // ore blocks are 8x8 chunks
+const oreMask = () => ORES.reduce((m, o, i) => m | ((S.ores[i] && oreInDim(o, S.dim)) ? 1 << i : 0), 0);
+
+function resetWorld() {
+  const sv = parseSeed(S.seedText); if (sv == null) return;
+  const { hi, lo } = seedParts(sv);
+  gen++; queue.length = 0;
+  tiles = new Map(); oreBlocks = new Map(); listBlocks = new Map();
+  world = { p: { mc: S.mc, era: S.era, dim: +S.dim, hi, lo }, seed: sv, meta: null };
+  closePop();
+  submit({ type: 'meta' }, d => { world.meta = d; buildLayers(); draw(); refreshList(); }, -10);
+  store.set('seed', S.seedText); store.set('ver', S.ver);
+  const t = S.seedText.trim();
+  $('seedHint').textContent = (/^[+-]?\d+$/.test(t) && BigInt(t) === sv) ? 'Numbers are used as-is. Text seeds are hashed the same way the game does.' : `Text seed hashes to ${sv}.`;
+  draw();
+}
+function resetOres() { gen++; queue.length = 0; oreBlocks = new Map(); listBlocks = new Map();
+  // keep biome tiles: re-queue nothing, they are drawn from cache
+  for (const [k, t] of tiles) if (!t.canvas) tiles.delete(k);
+  draw(); refreshList(); }
+
+// ---------- Map ----------
+const cv = $('map'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() { const r = $('mapwrap').getBoundingClientRect(); DPR = Math.min(2, window.devicePixelRatio || 1); W = r.width; H = r.height; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); draw(); }
+const VALID_SCALES = [4, 16, 64, 256];
+function chooseScale() { for (const s of VALID_SCALES) if (s * S.ppb >= 1.5) return s; return 256; }
+const b2s = (bx, bz) => [(bx - S.cx) * S.ppb + W / 2, (bz - S.cz) * S.ppb + H / 2];
+const s2b = (sx, sy) => [(sx - W / 2) / S.ppb + S.cx, (sy - H / 2) / S.ppb + S.cz];
+let raf = 0; function draw() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+const MIN_ORE_PPB = 1 / 4;
+
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#2a3138'; ctx.fillRect(0, 0, W, H);
+  if (!world || !world.meta) return;
+  const s = chooseScale(), span = TILE * s;
+  const [bx0, bz0] = s2b(0, 0), [bx1, bz1] = s2b(W, H);
+  const ccx = (bx0 + bx1) / 2, ccz = (bz0 + bz1) / 2;
+  for (let tz = Math.floor(bz0 / span); tz <= Math.floor(bz1 / span); tz++) for (let tx = Math.floor(bx0 / span); tx <= Math.floor(bx1 / span); tx++) {
+    const t = getTile(s, tx, tz, Math.hypot((tx + .5) * span - ccx, (tz + .5) * span - ccz) / span);
+    const [sx, sy] = b2s(tx * span, tz * span), sz = span * S.ppb;
+    if (t && t.canvas) ctx.drawImage(t.canvas, sx, sy, sz + .5, sz + .5); else { ctx.fillStyle = '#323a41'; ctx.fillRect(sx, sy, sz + .5, sz + .5); }
+  }
+  // dim the biomes so ore markers read first
+  ctx.fillStyle = 'rgba(16,20,24,.42)'; ctx.fillRect(0, 0, W, H);
+  if (S.ppb >= 1) drawGrid(bx0, bz0, bx1, bz1);
+  hitList = [];
+  if (S.ppb >= MIN_ORE_PPB) drawOres(bx0, bz0, bx1, bz1);
+  drawPlayer();
+}
+
+function getTile(s, tx, tz, prio) {
+  const key = `${s}|${tx}|${tz}`; let t = tiles.get(key); if (t) return t;
+  t = {}; tiles.set(key, t);
+  submit({ type: 'tile', x: tx * TILE, z: tz * TILE, s, y: 320 }, d => {
+    const c = document.createElement('canvas'); c.width = c.height = TILE;
+    const g = c.getContext('2d'), img = g.createImageData(TILE, TILE), col = world.meta.col;
+    for (let i = 0; i < d.ids.length; i++) { const id = d.ids[i]; img.data[4*i+3] = 255; if (id < 0 || id > 255) continue; img.data[4*i] = col[3*id]; img.data[4*i+1] = col[3*id+1]; img.data[4*i+2] = col[3*id+2]; }
+    g.putImageData(img, 0, 0); t.canvas = c; t.ids = d.ids; draw();
+  }, 5 + prio);
+  if (tiles.size > 1500) { for (const [k, v] of tiles) { if (v.canvas && +k.split('|')[0] !== s) tiles.delete(k); if (tiles.size < 1000) break; } }
+  return t;
+}
+function biomeAt(bx, bz) {
+  for (const s of VALID_SCALES) {
+    const sp = TILE * s, tx = Math.floor(bx / sp), tz = Math.floor(bz / sp), t = tiles.get(`${s}|${tx}|${tz}`);
+    if (t && t.ids) return t.ids[Math.floor((bz - tz * sp) / s) * TILE + Math.floor((bx - tx * sp) / s)];
+  }
+  return -1;
+}
+function drawGrid(bx0, bz0, bx1, bz1) {
+  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = Math.floor(bx0 / 16) * 16; x <= bx1; x += 16) { const [sx] = b2s(x, 0); ctx.moveTo(Math.round(sx) + .5, 0); ctx.lineTo(Math.round(sx) + .5, H); }
+  for (let z = Math.floor(bz0 / 16) * 16; z <= bz1; z += 16) { const [, sy] = b2s(0, z); ctx.moveTo(0, Math.round(sy) + .5); ctx.lineTo(W, Math.round(sy) + .5); }
+  ctx.stroke();
+}
+
+// ---------- Ore data ----------
+function getOreBlock(map, bx, bz, prio, cb) {
+  const key = `${bx}|${bz}`; let b = map.get(key);
+  if (b) { if (cb && b.veins) cb(b); else if (cb) (b.waiting = b.waiting || []).push(cb); return b; }
+  b = { waiting: cb ? [cb] : [] }; map.set(key, b);
+  submit({ type: 'ores', cx: bx * OB, cz: bz * OB, n: OB, mask: 0x3ff }, d => {
+    b.veins = d.veins; draw(); for (const f of b.waiting) f(b); b.waiting = [];
+  }, prio);
+  return b;
+}
+// veins: def, ox, oy, oz, n, minY, maxY, cx, cy, cz
+const veinGroup = (v, i) => world.meta.defs[v[i]].group;
+const veinKey = (v, i) => `${v[i+7]},${v[i+8]},${v[i+9]}`;
+function veinVisible(v, i, mask) { return (mask & (1 << veinGroup(v, i))) && v[i+4] >= S.minSize && (showMined || !mined.has(minedKey(v, i))); }
+const minedKey = (v, i) => `${S.seedText.trim()}|${S.dim}|${veinKey(v, i)}`;
+
+let hitList = [];
+function drawOres(bx0, bz0, bx1, bz1) {
+  const mask = oreMask(); if (!mask) return;
+  const c0 = Math.floor(bx0 / 16 / OB), c1 = Math.floor(bx1 / 16 / OB), r0 = Math.floor(bz0 / 16 / OB), r1 = Math.floor(bz1 / 16 / OB);
+  const mid = [(c0 + c1) / 2, (r0 + r1) / 2];
+  const big = S.ppb >= 2;
+  for (let bz = r0; bz <= r1; bz++) for (let bx = c0; bx <= c1; bx++) {
+    const b = getOreBlock(oreBlocks, bx, bz, Math.hypot(bx - mid[0], bz - mid[1]));
+    if (!b.veins) continue;
+    const v = b.veins;
+    for (let i = 0; i < v.length; i += 10) {
+      if (!veinVisible(v, i, mask)) continue;
+      const [sx, sy] = b2s(v[i+7] + .5, v[i+9] + .5);
+      if (sx < -10 || sy < -10 || sx > W + 10 || sy > H + 10) continue;
+      const g = veinGroup(v, i), o = ORES[g];
+      const sz = big ? Math.min(14, 5 + v[i+4]) : Math.max(3, Math.min(8, 2 + v[i+4] / 2));
+      const x = Math.round(sx - sz / 2), y = Math.round(sy - sz / 2);
+      ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(x - 1, y - 1, sz + 2, sz + 2);
+      ctx.fillStyle = o.c; ctx.fillRect(x, y, sz, sz);
+      if (sz >= 6) { ctx.fillStyle = o.hi; ctx.fillRect(x + 1, y + 1, Math.max(1, sz / 3), Math.max(1, sz / 3)); }
+      if (mined.has(minedKey(v, i))) { ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sz, y + sz); ctx.stroke(); }
+      hitList.push({ sx, sy, r: sz / 2 + 3, v, i });
+    }
+  }
+}
+function drawPlayer() {
+  if (!S.pos) return;
+  const [sx, sy] = b2s(S.pos[0] + .5, S.pos[2] + .5);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.fillStyle = '#b3261e';
+  ctx.beginPath(); ctx.arc(sx, sy, 6, 0, 7); ctx.fill(); ctx.stroke();
+  if (S.ppb >= MIN_ORE_PPB) {
+    const r = S.radius * 16 * S.ppb;
+    ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
+    ctx.strokeRect(sx - r, sy - r, r * 2, r * 2); ctx.setLineDash([]);
+  }
+}
+
+// ---------- Nearest list ----------
+let listGen = 0;
+function refreshList() {
+  const el = $('results');
+  if (!world || !world.meta) return;
+  if (!S.pos) { el.innerHTML = '<div class="empty">Enter your position to list the closest veins.</div>'; return; }
+  if (!oreMask()) { el.innerHTML = '<div class="empty">Turn on at least one ore to list veins.</div>'; return; }
+  const my = ++listGen;
+  const [px, py, pz] = S.pos, pcx = Math.floor(px / 16), pcz = Math.floor(pz / 16);
+  const b0x = Math.floor((pcx - S.radius) / OB), b1x = Math.floor((pcx + S.radius) / OB), b0z = Math.floor((pcz - S.radius) / OB), b1z = Math.floor((pcz + S.radius) / OB);
+  const need = []; for (let bz = b0z; bz <= b1z; bz++) for (let bx = b0x; bx <= b1x; bx++) need.push([bx, bz]);
+  let left = need.length;
+  el.innerHTML = '<div class="empty">Searching…</div>';
+  const blocks = [];
+  for (const [bx, bz] of need) getOreBlock(oreBlocks, bx, bz, -1, b => { blocks.push(b); if (--left === 0 && my === listGen) buildList(blocks); });
+}
+function buildList(blocks) {
+  const mask = oreMask(), [px, py, pz] = S.pos, R = S.radius * 16, rows = [];
+  for (const b of blocks) { const v = b.veins;
+    for (let i = 0; i < v.length; i += 10) {
+      if (!veinVisible(v, i, mask)) continue;
+      const x = v[i+7], y = v[i+8], z = v[i+9];
+      if (Math.abs(x - px) > R + 8 || Math.abs(z - pz) > R + 8) continue;
+      rows.push({ v, i, x, y, z, n: v[i+4], d: Math.hypot(x - px, y - py, z - pz) });
+    } }
+  rows.sort((a, b) => a.d - b.d);
+  const el = $('results'); el.innerHTML = '';
+  if (!rows.length) { el.innerHTML = '<div class="empty">No veins of the selected ores in range. Try a bigger radius or turn on more ores.</div>'; return; }
+  for (const r of rows.slice(0, 40)) {
+    const g = veinGroup(r.v, r.i), isMined = mined.has(minedKey(r.v, r.i));
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'res' + (isMined ? ' mined' : '');
+    b.innerHTML = `<img class="ore-sw" src="${SWATCH_V[variant(r.v, r.i)][g]}" alt="${VARIANT_TITLE[variant(r.v, r.i)]}" title="${VARIANT_TITLE[variant(r.v, r.i)]}"><span class="nm">${ORES[g].n} <span style="font-weight:400;color:var(--muted)">· ${r.n} block${r.n === 1 ? '' : 's'}</span></span><span class="ds"><b>${Math.round(r.d)} m</b>${dirLabel(r.x - px, r.z - pz)}</span><span class="co">X ${r.x} · Y ${r.y} · Z ${r.z}</span>`;
+    b.onclick = () => { S.cx = r.x; S.cz = r.z; if (S.ppb < 2) S.ppb = 2; draw(); requestAnimationFrame(() => { const [sx, sy] = b2s(r.x + .5, r.z + .5); openPop({ sx, sy, v: r.v, i: r.i }); }); };
+    el.appendChild(b);
+  }
+}
+// Overworld rock: deepslate below Y 0, normal stone above Y 8, a mix in between
+function variant(v, i) {
+  if (S.dim !== '0') return 'normal';
+  const lo = v[i+5], hi = v[i+6];
+  if (hi < 0) return 'deep';
+  if (lo > 8) return 'normal';
+  return 'mix';
+}
+const VARIANT_TITLE = { normal: 'Normal ore', deep: 'Deepslate ore', mix: 'Deepslate and normal ore' };
+function dirLabel(dx, dz) {
+  if (Math.abs(dx) < 4 && Math.abs(dz) < 4) return 'here';
+  const a = (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360;
+  return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(a / 45) % 8];
+}
+
+// ---------- Layers UI ----------
+function buildLayers() {
+  const el = $('layers'); el.innerHTML = '';
+  ORES.forEach((o, i) => {
+    if (!oreInDim(o, S.dim)) return;
+    const lab = document.createElement('label'); lab.className = 'layer';
+    lab.innerHTML = `<input type="checkbox" id="ore_${i}" ${S.ores[i] ? 'checked' : ''}><img class="ore-sw" src="${SWATCH[i]}" alt=""><span class="t">${o.n}</span>`;
+    lab.querySelector('input').addEventListener('change', e => { S.ores[i] = e.target.checked; store.set('ores', S.ores); draw(); refreshList(); });
+    el.appendChild(lab);
+  });
+}
+
+// ---------- Popover ----------
+let popEl = null;
+function closePop() { if (popEl) { popEl.remove(); popEl = null; } }
+function openPop(h) {
+  closePop();
+  const v = h.v, i = h.i, g = veinGroup(v, i), def = world.meta.defs[v[i]].name;
+  const x = v[i+7], y = v[i+8], z = v[i+9], key = minedKey(v, i);
+  popEl = document.createElement('div'); popEl.className = 'pop';
+  const tp = S.dim === '-1' ? `/execute in minecraft:the_nether run tp @s ${x} ${y} ${z}` : `/tp @s ${x} ${y} ${z}`;
+  popEl.innerHTML = `<button class="x" aria-label="Close">×</button><h3><img class="ore-sw" src="${SWATCH_V[variant(v, i)][g]}" alt="${VARIANT_TITLE[variant(v, i)]}" title="${VARIANT_TITLE[variant(v, i)]}" style="width:20px;height:20px">${ORES[g].n}</h3>
+    <div class="coords">X ${x} · Y ${y} · Z ${z}<br>About ${v[i+4]} block${v[i+4] === 1 ? '' : 's'}, Y ${v[i+5]} to ${v[i+6]}<br>${veinLabel(def)}</div>
+    <div class="acts"><button class="btn" data-a="xyz">Copy X Y Z</button><button class="btn" data-a="tp">Copy /tp</button></div>
+    <label class="check" style="font-size:12px"><input type="checkbox" id="minedBox" ${mined.has(key) ? 'checked' : ''}> Mark as mined</label>`;
+  $('mapwrap').appendChild(popEl);
+  const pw = popEl.offsetWidth, ph = popEl.offsetHeight;
+  popEl.style.left = Math.max(8, Math.min(W - pw - 8, h.sx + 12)) + 'px';
+  popEl.style.top = Math.max(8, Math.min(H - ph - 8, h.sy - ph / 2)) + 'px';
+  popEl.querySelector('.x').onclick = closePop;
+  popEl.querySelector('#minedBox').onchange = e => { if (e.target.checked) mined.add(key); else mined.delete(key); store.set('mined', [...mined].slice(-2000)); draw(); refreshList(); };
+  popEl.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+    const text = b.dataset.a === 'tp' ? tp : `${x} ${y} ${z}`;
+    const label = b.textContent;
+    const done = () => { b.textContent = 'Copied'; setTimeout(() => b.textContent = label, 1200); };
+    try { navigator.clipboard.writeText(text).then(done, () => { b.textContent = text; b.style.userSelect = 'all'; }); } catch { b.textContent = text; }
+  });
+}
+function veinLabel(def) {
+  const map = { ore_diamond_buried: 'Buried vein: only blocks with no air touching them', ore_lapis_buried: 'Buried vein: only blocks with no air touching them',
+    ore_diamond_large: 'Large vein', ore_diamond_medium: 'Medium vein', ore_copper_large: 'Large vein (dripstone caves)', ore_gold_extra: 'Badlands bonus gold',
+    ore_ancient_debris_large: 'Debris cluster', ore_debris_small: 'Small debris cluster' };
+  return map[def] || 'Standard vein';
+}
+
+// ---------- Interaction ----------
+const pointers = new Map(); let dragStart = null, pinch = null, moved = false;
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.offsetX, e.offsetY]); moved = false;
+  if (pointers.size === 1) { dragStart = { x: e.offsetX, y: e.offsetY, cx: S.cx, cz: S.cz }; cv.classList.add('drag'); }
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a[0]-b[0], a[1]-b[1]), ppb: S.ppb }; } });
+cv.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+  if (pointers.size === 2 && pinch) { const [a, b] = [...pointers.values()]; zoomAt((a[0]+b[0])/2, (a[1]+b[1])/2, pinch.ppb * Math.hypot(a[0]-b[0], a[1]-b[1]) / pinch.d / S.ppb); moved = true; }
+  else if (dragStart && pointers.size === 1) { const dx = e.offsetX - dragStart.x, dy = e.offsetY - dragStart.y; if (Math.abs(dx) + Math.abs(dy) > 3) moved = true; S.cx = dragStart.cx - dx / S.ppb; S.cz = dragStart.cz - dy / S.ppb; closePop(); draw(); }
+  readout(e.offsetX, e.offsetY); });
+const endPtr = e => { pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null;
+  if (pointers.size === 1) { const [p] = [...pointers.values()]; dragStart = { x: p[0], y: p[1], cx: S.cx, cz: S.cz }; }
+  if (!pointers.size) { dragStart = null; cv.classList.remove('drag'); if (!moved && e.type === 'pointerup') clickAt(e.offsetX, e.offsetY); } };
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0018))); }, { passive: false });
+const MIN_PPB = 1/64, MAX_PPB = 24;
+function zoomAt(sx, sy, f) { const [bx, bz] = s2b(sx, sy); S.ppb = Math.min(MAX_PPB, Math.max(MIN_PPB, S.ppb * f)); S.cx = bx - (sx - W / 2) / S.ppb; S.cz = bz - (sy - H / 2) / S.ppb; closePop(); draw(); }
+$('zin').onclick = () => zoomAt(W / 2, H / 2, 2);
+$('zout').onclick = () => zoomAt(W / 2, H / 2, 0.5);
+$('home').onclick = () => { if (S.pos) { S.cx = S.pos[0]; S.cz = S.pos[2]; } else { S.cx = 0; S.cz = 0; } closePop(); draw(); };
+function clickAt(sx, sy) {
+  closePop(); let best = null, bd = 1e9;
+  for (const h of hitList) { const d = Math.hypot(h.sx - sx, h.sy - sy); if (d <= h.r && d < bd) { bd = d; best = h; } }
+  if (best) openPop(best);
+}
+function readout(sx, sy) {
+  const [bx, bz] = s2b(sx, sy), x = Math.floor(bx), z = Math.floor(bz);
+  $('rx').textContent = x; $('rz').textContent = z; $('rc').textContent = `${x >> 4}, ${z >> 4}`;
+  const id = biomeAt(x, z);
+  if (id >= 0 && world && world.meta) { const c = world.meta.col; $('rb').textContent = (world.meta.names[id] || '').replace(/_/g, ' ').replace(/^\w/, m => m.toUpperCase()); $('rbsw').style.background = `rgb(${c[3*id]},${c[3*id+1]},${c[3*id+2]})`; }
+  else { $('rb').textContent = '—'; $('rbsw').style.background = 'transparent'; }
+}
+
+// ---------- Status ----------
+let statusText = null;
+function setStatus(t) { statusText = t; updateStatus(); }
+function updateStatus() {
+  const el = $('status');
+  if (statusText) { el.hidden = false; el.textContent = statusText; return; }
+  if (!world || !world.meta) { el.hidden = false; el.textContent = 'Loading generator…'; return; }
+  const n = queue.length + inflight.size;
+  if (n > 0) { el.hidden = false; el.textContent = `Calculating… ${n} left`; }
+  else if (S.ppb < MIN_ORE_PPB && oreMask()) { el.hidden = false; el.textContent = 'Zoom in to see ore veins'; }
+  else el.hidden = true;
+}
+
+// ---------- Controls ----------
+function fillVersions() {
+  const sel = $('version'); sel.innerHTML = '';
+  for (const [key, label] of verList()) { const o = document.createElement('option'); o.value = key; o.textContent = label; sel.appendChild(o); }
+  if (!verList().some(v => v[0] === S.ver)) S.ver = verList()[0][0];
+  sel.value = S.ver; const v = verList().find(v => v[0] === S.ver); S.mc = v[2]; S.era = v[3];
+}
+function syncSeg(id, val) { for (const b of $(id).children) b.setAttribute('aria-pressed', b.dataset.v === val); }
+$('edition').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  syncSeg('edition', b.dataset.v);
+  const note = $('editionNote');
+  if (b.dataset.v === 'bedrock') { note.hidden = false; note.innerHTML = '<b>Bedrock isn’t available yet.</b> Bedrock places ores with different rules from Java, and I haven’t been able to verify them, so the map still shows Java results.'; }
+  else note.hidden = true;
+});
+$('dimension').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.dim = b.dataset.v; syncSeg('dimension', S.dim); resetWorld(); buildLayers(); });
+$('version').onchange = e => { S.ver = e.target.value; const v = verList().find(v => v[0] === S.ver); S.mc = v[2]; S.era = v[3]; resetWorld(); };
+$('go').onclick = () => { S.seedText = $('seed').value; resetWorld(); };
+$('seed').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+$('randomSeed').onclick = () => { const a = new Uint32Array(2); crypto.getRandomValues(a); const v = BigInt.asIntN(64, (BigInt(a[0]) << 32n) | BigInt(a[1])); $('seed').value = S.seedText = v.toString(); resetWorld(); };
+function readPos() {
+  const x = parseInt($('px').value, 10), y = parseInt($('py').value, 10), z = parseInt($('pz').value, 10);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+  S.pos = [x, Number.isFinite(y) ? y : (S.dim === '0' ? -59 : 15), z]; store.set('pos', S.pos);
+  S.cx = x; S.cz = z; if (S.ppb < 1) S.ppb = 1; draw(); refreshList();
+}
+for (const id of ['px', 'py', 'pz']) { $(id).addEventListener('change', readPos); $(id).addEventListener('keydown', e => { if (e.key === 'Enter') readPos(); }); }
+$('useCentre').onclick = () => { $('px').value = Math.round(S.cx); $('pz').value = Math.round(S.cz); if (!$('py').value) $('py').value = S.dim === '0' ? -59 : 15; readPos(); };
+$('radius').onchange = e => { S.radius = +e.target.value; draw(); refreshList(); };
+$('minSize').onchange = e => { S.minSize = +e.target.value; draw(); refreshList(); };
+$('showMined').onclick = () => { showMined = !showMined; $('showMined').textContent = showMined ? 'Hide mined' : 'Show mined'; draw(); refreshList(); };
+$('toggleAll').onclick = () => { const idx = ORES.map((o, i) => i).filter(i => oreInDim(ORES[i], S.dim)); const any = idx.some(i => S.ores[i]); idx.forEach(i => S.ores[i] = !any); $('toggleAll').textContent = any ? 'Show all' : 'Hide all'; store.set('ores', S.ores); buildLayers(); draw(); refreshList(); };
+$('sheetToggle').onclick = () => { const p = $('panel'), c = p.classList.toggle('collapsed'); $('sheetToggle').textContent = c ? 'Settings' : 'Hide'; $('sheetToggle').setAttribute('aria-expanded', !c); setTimeout(resize, 0); };
+
+// ---------- Boot ----------
+new ResizeObserver(resize).observe($('mapwrap'));
+$('seed').value = S.seedText;
+if (S.pos) { [$('px').value, $('py').value, $('pz').value] = S.pos; S.cx = S.pos[0]; S.cz = S.pos[2]; }
+else { S.pos = [0, -59, 0]; $('px').value = 0; $('py').value = -59; $('pz').value = 0; }
+try { spawnWorkers(); } catch { setStatus('This browser blocked background workers, so the map cannot run here.'); }
+fillVersions(); resetWorld(); buildLayers(); resize();
+})();
+</script>
+<script src="../lib/scene.js"></script>
+</body>
+</html>

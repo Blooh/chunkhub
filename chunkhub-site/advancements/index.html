@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Advancement Checklist · Chunk Hub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@900&family=Carlito:wght@400;700&display=swap">
+<style>
+
+:root {
+  --bg: #e9ecef;
+  --panel: #f7f8f9;
+  --panel-2: #eef1f3;
+  --line: #d3d9de;
+  --fg: #1b2228;
+  --muted: #5d6973;
+  --accent: #b3261e;      /* redstone */
+  --accent-fg: #ffffff;
+  --ok: #2f7d4f;
+  --chip: #ffffff;
+  --shadow: 0 1px 2px rgba(20,30,40,.08), 0 6px 24px rgba(20,30,40,.10);
+  --f-display: "CH Display", "Franklin Gothic Heavy", "Libre Franklin", "Arial Black", sans-serif;
+  --f-body: Calibri, "Carlito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: Calibri, "Carlito", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1418; --panel: #161c21; --panel-2: #1d252b; --line: #2b353d; --fg: #e3e8ec; --muted: #8d9aa4;
+  --accent: #e2574c; --accent-fg: #1a0705; --ok: #5cc287; --chip: #1f282f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1418; --panel: #161c21; --panel-2: #1d252b; --line: #2b353d; --fg: #e3e8ec; --muted: #8d9aa4;
+  --accent: #e2574c; --accent-fg: #1a0705; --ok: #5cc287; --chip: #1f282f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark; }
+
+/* Layout: site header; a title row with overall progress; category tabs and filters; a two-column body with the
+   checklist on the left and a sticky guide panel on the right (guides open inline under the row on phones). */
+* { box-sizing: border-box; }
+:root { --done-bg: #e2f3e7; --done-line: #57ad75; --done-fg: #1f5c35; --stripe: rgba(87,173,117,.03); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --done-bg: #17321f; --done-line: #3f9a5f; --done-fg: #a6e3bb; --stripe: rgba(92,194,135,.025); } }
+:root[data-theme="dark"] { --done-bg: #17321f; --done-line: #3f9a5f; --done-fg: #a6e3bb; --stripe: rgba(92,194,135,.025); }
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.45; margin: 0; }
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.site-head { height: var(--head-h); display: flex; align-items: center; gap: 18px; background: var(--panel); border-bottom: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+.site-head .home { font-family: var(--f-display); font-size: 15px; text-decoration: none; white-space: nowrap; }
+.site-head .home span { color: var(--accent); }
+.site-head nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; }
+.site-head nav a { color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 6px; white-space: nowrap; font-weight: 600; font-size: 14px; }
+.site-head nav a:hover, .site-head nav a[aria-current="page"] { color: var(--fg); background: var(--panel-2); }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: end; padding-block: 32px 20px; }
+.title h1 { font-family: var(--f-display); font-weight: 900; font-size: clamp(24px, 4vw, 34px); line-height: 1.1; margin: 0 0 10px; }
+.title h1 span { color: var(--accent); margin-left: .35em; }
+.title p { margin: 0; color: var(--muted); max-width: 62ch; }
+.overall { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.overall .big { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+.overall .big b { font-size: 30px; line-height: 1; }
+.overall .big span { color: var(--muted); }
+.bar, .sub-bar { height: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.bar i, .sub-bar u { display: block; height: 100%; background: var(--ok); border-radius: inherit; transition: width .3s; }
+.cats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.cp { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 12px; color: var(--muted); }
+.cp i, .cat-head i, .tabs i, .g-cat i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+.cp b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.cp em { grid-column: 1 / -1; height: 4px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
+.cp em u { display: block; height: 100%; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding-bottom: 14px; position: sticky; top: calc(var(--head-h) + env(safe-area-inset-top, 0px)); background: var(--bg); z-index: 4; padding-top: 8px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tabs button { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 2px; }
+.tabs button small { font-weight: 400; color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.tabs button[aria-selected="true"] small { color: inherit; opacity: .7; }
+.filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.field { background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; min-width: 0; }
+#search { width: 220px; }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 14px; }
+.check input, .sub-item input { accent-color: var(--ok); width: 16px; height: 16px; margin: 0; flex: none; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; align-items: start; padding-bottom: 32px; }
+.list { display: flex; flex-direction: column; min-width: 0; }
+.cat-head { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 6px; font-weight: 700; }
+.cat-head:first-child { margin-top: 0; }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; transition: border-color .12s, opacity .2s; }
+.row:hover, .row.active { border-color: var(--muted); }
+.row.active { box-shadow: inset 3px 0 0 var(--accent); }
+.row input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.row { position: relative; grid-template-columns: minmax(0, 1fr) auto !important; }
+.row:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { position: relative; overflow: hidden; isolation: isolate; transition: border-color .2s; }
+.row > .info, .row > .meta { position: relative; z-index: 1; }
+/* green fill: a layer that sweeps in from the left when ticked and stays while done */
+.row::before { content: ""; position: absolute; inset: 0; background: var(--done-bg); transform: scaleX(0); transform-origin: left; transition: transform .45s cubic-bezier(.2, .7, .3, 1); z-index: 0; }
+.row.done { border-color: var(--done-line); }
+.row.done::before { transform: scaleX(1); }
+/* idle: soft diagonal bands of lighter green slowly drift across completed rows */
+.row.done::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-image: repeating-linear-gradient(135deg, transparent 0 14px, var(--stripe) 14px 28px); background-size: 39.6px 39.6px; animation: done-drift 6s linear infinite; }
+.row.just-done { animation: done-pop .5s ease-out; }
+.row.just-done .nm::after { content: " ✓"; display: inline-block; color: var(--done-line); animation: done-check .5s ease-out; }
+@keyframes done-drift { from { background-position: 0 0; } to { background-position: 39.6px 0; } }
+@keyframes done-pop { 0% { transform: scale(1); } 40% { transform: scale(1.015); } 100% { transform: scale(1); } }
+@keyframes done-check { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.3); opacity: 1; } 100% { transform: scale(1); } }
+.row.done .nm { color: var(--done-fg); }
+.row.done .goal, .row.done .subcount { color: var(--done-fg); opacity: .8; }
+.row { cursor: pointer; user-select: none; }
+.row .info { display: flex; flex-direction: column; min-width: 0; }
+.sub-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 3px 8px; cursor: pointer; font-weight: 700; }
+.sub-btn .subcount { color: inherit; }
+.sub-btn .chev { font-size: 11px; transition: transform .15s; }
+.sub-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.sub-btn:hover { border-color: var(--muted); }
+.sub-inline { background: var(--panel); border: 1px solid var(--muted); border-top: 0; border-radius: 0 0 8px 8px; margin: -8px 0 8px; padding: 4px 14px 14px; cursor: default; }
+.sub-inline .sub { margin-top: 0; border-top: 0; }
+.sub-inline .sub-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 12px; }
+.guide-btn { display: none; border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 3px 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.guide-btn[aria-expanded="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.row .nm { font-weight: 700; }
+.row .goal { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta { display: flex; gap: 6px; align-items: center; }
+.subcount { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.type { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.t-challenge { color: var(--accent); border-color: var(--accent); }
+.t-hidden { border-style: dashed; }
+.none { padding: 24px; color: var(--muted); text-align: center; border: 1px dashed var(--line); border-radius: 8px; }
+
+.side { position: sticky; top: calc(var(--head-h) + 64px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 16px; }
+.guide { max-height: calc(100vh - var(--head-h) - 84px - 290px); min-height: 220px; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.guide-inner { padding: 18px 20px 20px; }
+.placeholder { color: var(--muted); padding: 24px 0; text-align: center; }
+.guide-card h3 { margin: 4px 0 6px; font-size: 22px; line-height: 1.2; }
+.g-cat { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.g-goal { margin: 0 0 12px; color: var(--muted); }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 10px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; }
+.steps li::before { content: counter(s); width: 24px; height: 24px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); display: grid; place-items: center; font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+.done-toggle { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); width: 100%; }
+.guide-inline { background: var(--panel); border: 1px solid var(--muted); border-top: 0; border-radius: 0 0 8px 8px; margin: -8px 0 8px; padding: 12px 14px 14px; }
+
+.sub { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.sub-head { display: flex; align-items: baseline; gap: 8px; }
+.sub-head b { flex: 1; }
+.sub-count { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+.sub-list { display: flex; flex-direction: column; gap: 2px; }
+.sub-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.sub-item:hover { background: var(--panel-2); }
+.sub-item small { color: var(--muted); font-size: 12px; text-align: right; }
+.sub-item.got span { text-decoration: line-through; color: var(--muted); }
+.sub-list.hide-done .sub-item.got { display: none; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-weight: 600; font-size: 13px; }
+.link.danger { color: var(--accent); text-decoration: underline; }
+
+footer { border-top: 1px solid var(--line); padding-block: 18px 28px; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+
+@media (max-width: 900px) {
+  .top { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: 1fr; }
+  .guide { display: none; }
+  .side { display: contents; }
+  .guide-btn { display: inline-block; }
+  #search { width: 100%; }
+  .filters { width: 100%; }
+  .filters .field { flex: 1; }
+  .controls { position: static; }
+}
+@media (max-width: 480px) { .row .goal { white-space: normal; } .meta .type { display: none; } }
+@media (prefers-reduced-motion: reduce) { .bar i, .sub-bar u, .row { transition: none; } .row::before { transition: none; } .row.done::after, .row.just-done, .row.just-done .nm::after { animation: none; } }
+
+/* Ad slots: fixed-size boxes so pages don't jump when an ad loads. Replace the placeholder inside with the ad network's code. */
+.ad-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-inline: auto; }
+.ad-slot .ad-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ad-slot .ad-box { width: 100%; display: grid; place-items: center; background: var(--panel-2); border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; overflow: hidden; }
+.ad-rect .ad-box { width: 300px; max-width: 100%; height: 250px; }
+.ad-leader { width: 100%; max-width: 728px; }
+.ad-leader .ad-box { height: 90px; }
+@media (max-width: 760px) { .ad-leader .ad-box { height: 100px; max-width: 320px; } .ad-leader { max-width: 320px; } }
+.foot-ad { padding-block: 8px 28px; }
+.list-ad { margin: 10px 0 16px; display: none; }
+@media (max-width: 900px) { .side { position: static; } .side .ad-slot { display: none; } .list-ad { display: flex; } }
+.switch { margin-top: 14px; display: inline-flex; align-items: baseline; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; cursor: pointer; font: inherit; color: inherit; }
+.switch:hover { border-color: var(--muted); }
+.switch .k { color: var(--muted); font-size: 13px; }
+.switch b { font-size: 17px; }
+.switch .chev { font-size: 12px; color: var(--muted); }
+
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(10, 14, 18, .55); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); animation: modal-fade .18s ease-out; }
+.modal[hidden] { display: none !important; }
+.modal-card { position: relative; width: 100%; max-width: 520px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; box-shadow: 0 20px 60px rgba(0, 0, 0, .35); animation: modal-rise .22s cubic-bezier(.2, .7, .3, 1); }
+.modal-card h2 { margin: 0 0 16px; font-family: var(--f-display); font-weight: 900; font-size: 20px; }
+.modal-x { position: absolute; top: 12px; right: 12px; border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; }
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choice { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; text-align: left; font: inherit; color: inherit; background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border-color .15s, transform .15s; }
+.choice:hover { border-color: var(--muted); transform: translateY(-1px); }
+.choice.current { border-color: var(--done-line); }
+.choice .c-name { font-size: 18px; font-weight: 700; }
+.choice .c-meta { grid-column: 1; color: var(--muted); font-size: 13px; }
+.choice .c-count { grid-row: 1 / span 2; grid-column: 2; font-variant-numeric: tabular-nums; font-weight: 700; }
+.choice .c-bar { grid-column: 1 / -1; height: 6px; background: var(--panel-2); border-radius: 99px; overflow: hidden; margin-top: 6px; }
+.choice .c-bar u { display: block; height: 100%; background: var(--ok); }
+body.modal-open { overflow: hidden; }
+@keyframes modal-fade { from { opacity: 0; } }
+@keyframes modal-rise { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+.choice { text-decoration: none; }
+@media (prefers-reduced-motion: reduce) { .modal, .modal-card, .choice { animation: none; transition: none; } }
+
+.site-head { gap: 14px; }
+.more { position: relative; flex: none; }
+.more summary { list-style: none; cursor: pointer; color: var(--muted); padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; white-space: nowrap; user-select: none; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary:hover, .more[open] summary, .more.current summary { color: var(--fg); background: var(--panel-2); }
+.more .menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; z-index: 40; }
+.more .menu a { color: var(--fg); text-decoration: none; padding: 8px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; }
+.more .menu a:hover, .more .menu a[aria-current="page"] { background: var(--panel-2); }
+@media (max-width: 760px) { .site-head nav, .site-head .more.lists { display: none; } .more .menu a.primary { display: block; } }
+.more .menu a.primary { display: none; }
+@media (max-width: 760px) { .more .menu a.primary { display: block; } .more .menu .sep { display: block; } }
+.more .menu .sep { display: none; height: 1px; background: var(--line); margin: 4px 6px; }
+/* Floating pill header: dark glass bar with logo, tool links, a Tools menu and a button on the right. */
+:root { --head-h: 72px; }
+.site-head { height: 56px; width: min(1240px, calc(100% - 24px)); margin: 8px auto; padding: 0 8px 0 20px; gap: 4px; border-radius: 999px;
+  background: rgba(16,16,18,.86); border: 1px solid rgba(255,255,255,.09); border-bottom: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  position: sticky; top: 8px; z-index: 30; flex: none; color: #f4f4f5; font-family: var(--f-body); }
+.site-head .home { display: flex; align-items: center; gap: 9px; color: #fff; font-family: var(--f-body); font-weight: 700; font-size: 19px; letter-spacing: -.01em; margin-right: 16px; text-decoration: none; }
+.site-head .home span { color: #fff; }
+.site-head .logo { flex: none; }
+.site-head nav { display: flex; gap: 2px; }
+.site-head nav a, .site-head .more summary { color: #a1a1aa; background: none; font-weight: 500; font-size: 15px; line-height: 22px; padding: 8px 14px; border-radius: 999px; transition: color .15s, background-color .15s; }
+.site-head nav a:hover, .site-head .more summary:hover, .site-head .more[open] summary { color: #fff; background: rgba(255,255,255,.06); }
+.site-head nav a[aria-current="page"], .site-head .more.current summary { color: #fff; background: none; }
+.site-head .more summary { display: flex; align-items: center; gap: 5px; position: relative; }
+.site-head .more .chev { transition: transform .15s; }
+.site-head .more[open] .chev { transform: rotate(180deg); }
+.site-head .more .dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; margin-left: 3px; box-shadow: 0 0 8px rgba(255,59,48,.7); }
+.site-head .more .menu { left: 0; right: auto; top: calc(100% + 12px); min-width: 200px; background: #141416; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.45); padding: 6px; }
+.site-head .more .menu a { color: #d4d4d8; font-weight: 500; border-radius: 9px; }
+.site-head .more .menu a:hover, .site-head .more .menu a[aria-current="page"] { color: #fff; background: rgba(255,255,255,.07); }
+.site-head .more .menu .sep { background: rgba(255,255,255,.09); }
+.site-head .cta { margin-left: auto; display: flex; align-items: center; gap: 8px; color: #e4e4e7; text-decoration: none; font-weight: 600; font-size: 15px; padding: 9px 16px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.04); white-space: nowrap; transition: background-color .15s, border-color .15s; }
+.site-head .cta:hover, .site-head .cta[aria-current="page"] { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); color: #fff; }
+.site-head :focus-visible { outline: 2px solid #ff3b30; outline-offset: 2px; }
+@media (max-width: 760px) { .site-head nav, .site-head .more.lists { display: none; } .site-head { padding-left: 16px; } .site-head .home { font-size: 17px; margin-right: 4px; } .site-head .more .menu { left: auto; right: -90px; } }
+@media (max-width: 400px) { .site-head .cta span { display: none; } .site-head .cta { padding: 9px 11px; } }
+.site-head .cta { margin-right: 6px; }
+.site-head .account { position: relative; flex: none; margin-left: auto; }
+.site-head .signin { display: flex; align-items: center; gap: 10px; background: none; border: 0; color: #e4e4e7; font: inherit; font-weight: 500; font-size: 15px; padding: 4px 14px 4px 4px; border-radius: 999px; cursor: pointer; transition: background-color .15s; }
+.site-head .signin:hover, .site-head .signin[aria-expanded="true"] { background: rgba(255,255,255,.07); color: #fff; }
+.site-head .avatar { width: 36px; height: 36px; border-radius: 50%; background: #3f3f46; color: #8e8e96; display: grid; place-items: end center; overflow: hidden; flex: none; }
+.site-head .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.site-head .signin.in .avatar { place-items: center; }
+.site-head .signin.in .lbl { display: none; }
+.site-head .signin.in { padding: 4px; }
+.site-head .signin-pop { position: absolute; right: 0; top: calc(100% + 12px); width: 260px; background: #141416; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.45); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.45; color: #a1a1aa; z-index: 40; }
+.site-head .signin-pop[hidden] { display: none; }
+.site-head .signin-pop b { color: #fff; font-size: 15px; }
+@media (max-width: 760px) { .site-head .signin .lbl { display: none; } .site-head .signin { padding: 4px; } .site-head { padding-right: 6px; } }
+@media (max-width: 400px) { .site-head .home span { font-size: 16px; } .site-head .cta { margin-right: 2px; } }
+/* phones: Seed Map and Player Search stay in the bar; everything else moves into the menu (☰) next to the profile picture */
+.site-head .more.burger { display: none; }
+.site-head .more .menu .grp { display: block; padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8e8e96; }
+@media (max-width: 760px) {
+  .site-head { padding: 0 6px 0 14px; gap: 2px; }
+  .site-head nav:not(.after) { display: flex; }
+  .site-head nav:not(.after) a { padding: 8px 9px; font-size: 14px; }
+  .site-head .more.toolmenu, .site-head .more.lists, .site-head nav.after { display: none; }
+  .site-head .home { margin-right: 6px; }
+  .site-head .home span { display: none; }
+  .site-head .more.burger { display: block; }
+  .site-head nav a.k-stats { display: none; }
+  .site-head .more.burger summary { padding: 8px 10px; display: grid; place-items: center; }
+  .site-head .more.burger .menu { left: auto; right: 0; min-width: 230px; max-height: calc(100vh - 90px); overflow-y: auto; }
+  .site-head .more.burger { margin-left: auto; }
+  .site-head .account { margin-left: 2px; }
+  .site-head .more.burger .menu .sep { display: block; height: 1px; background: rgba(255,255,255,.12); margin: 6px 8px; }
+}
+@media (max-width: 340px) { .site-head nav:not(.after) a { padding: 8px 6px; font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .site-head nav a, .site-head .signin, .site-head .more summary, .site-head .cta, .site-head .more .chev { transition: none; } }
+.legal-links a { color: inherit; } .legal-links { white-space: nowrap; }
+
+/* Same world as the home page, fixed behind the tool pages: sky and clouds at the top, ground below.
+   Each page's content sits on a "sheet" so it stays easy to read. */
+html { background: #6f6f6f; }
+body { background: transparent !important; position: relative; }
+body:not(.map-page) { display: flow-root; }
+.scene { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.scene canvas { position: absolute; top: 0; left: 0; display: block; }
+#skyCv { width: 100%; background: #86c9e6; }
+#worldCv { image-rendering: pixelated; image-rendering: crisp-edges; transition: filter 1.5s linear; }
+main, .app { position: relative; z-index: 1; }
+.site-head { z-index: 30; background: rgba(14,20,28,.34); border-color: rgba(255,255,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.12); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); }
+.site-head nav a, .site-head .more summary { color: rgba(255,255,255,.86); text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.site-head nav a:hover, .site-head .more summary:hover, .site-head .more[open] summary { color: #fff; background: rgba(255,255,255,.14); }
+.site-head .home, .site-head .signin { text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.site-head .signin:hover, .site-head .signin[aria-expanded="true"] { background: rgba(255,255,255,.14); }
+.site-head .avatar { background: rgba(255,255,255,.22); color: rgba(255,255,255,.75); }
+section.top[data-scene-hero] { padding-bottom: 72px; }
+section.top[data-scene-hero] h1 { color: #10202a; text-shadow: 0 2px 0 rgba(255,255,255,.35); transition: color 2s ease, text-shadow 2s ease; }
+section.top[data-scene-hero] h1 span { color: #b3261e; }
+section.top[data-scene-hero] .title p { color: #1f3c4a; transition: color 2s ease; }
+section.top[data-scene-hero].night h1 { color: #f2f5f8; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+section.top[data-scene-hero].night h1 span { color: #ff6b5f; }
+section.top[data-scene-hero].night .title p { color: #c8d4e6; }
+section.top[data-scene-hero] .overall { box-shadow: 0 2px 0 rgba(0,0,0,.2), 0 12px 30px rgba(0,0,0,.25); }
+.sheet { background: var(--bg); border-radius: 18px; padding: 24px 24px 4px; margin-bottom: 56px; box-shadow: 0 2px 0 rgba(0,0,0,.25), 0 18px 50px rgba(0,0,0,.35); }
+.sheet > footer { border-top-color: var(--line); }
+@media (max-width: 640px) { .sheet { padding: 16px 12px 2px; border-radius: 14px; margin-inline: -4px; } section.top[data-scene-hero] { padding-bottom: 60px; } }
+/* checklist pages: no sheet, the world shows through; loose text gets a shadow, the filter bar is glass */
+.sheet.clear { background: none; box-shadow: none; padding: 0; border-radius: 0; }
+.sheet.clear .controls { background: rgba(14,20,28,.42); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; top: calc(var(--head-h) + 6px); }
+.sheet.clear .controls .check, .sheet.clear .cat-head, .sheet.clear .cat-head small, .sheet.clear .none, .sheet.clear .ad-slot .ad-label { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+.sheet.clear > footer { background: rgba(12,14,16,.78); color: #d9dee2; border: 0; border-radius: 10px; padding: 16px 20px; margin-bottom: 8px; }
+.sheet.clear > footer .link { color: #d9dee2; }
+.sheet.clear .cat-head { width: fit-content; justify-self: start; background: rgba(12,14,16,.62); padding: 3px 10px; border-radius: 999px; }
+body.map-page .site-head { position: relative; top: 0; }
+body.map-page { margin: 0; }
+/* loose notes that sit straight on the world get light text; notes inside panels keep their normal colour */
+.sheet.clear .note2 { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.85); }
+.sheet.clear :is(.panel-box, .stat, .card, .tbl, .result, .dl, .acct, .row, .modal-card) .note2 { color: var(--muted); text-shadow: none; }
+/* other tool pages: a frosted-glass sheet, the world blurred behind it */
+.sheet.frost { background: color-mix(in srgb, var(--bg) 55%, transparent); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); border: 1px solid rgba(255,255,255,.35); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sheet.frost { background: color-mix(in srgb, var(--bg) 62%, transparent); border-color: rgba(255,255,255,.12); } }
+:root[data-theme="dark"] .sheet.frost { background: color-mix(in srgb, var(--bg) 62%, transparent); border-color: rgba(255,255,255,.12); }
+@font-face { font-family: "CH Display"; src: local("Franklin Gothic Heavy"), local("FranklinGothic-Heavy"), local("Franklin Gothic Demi"); font-weight: 900; font-style: normal; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 900; letter-spacing: 0; }
+</style>
+</head>
+<body>
+<div class="scene" data-mode="fixed" data-amp=".55" data-trees="right" aria-hidden="true"><canvas id="skyCv"></canvas><canvas id="worldCv"></canvas></div>
+<header class="site-head"><a class="home" href="../index.html"><svg class="logo" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2.5 20.5 7.2 12 12 3.5 7.2z" fill="#ff3b30"/><path d="M3.5 7.2 12 12v9.5l-8.5-4.8z" fill="#f4f4f5"/><path d="M20.5 7.2 12 12v9.5l8.5-4.8z" fill="#a1a1aa"/></svg><span>Chunk Hub</span></a><nav aria-label="Main tools"><a class="k-seed" href="../seed-map/index.html">Seed Map</a><a class="k-player" href="../player/index.html">Player Search</a><a class="k-stats" href="../world-stats/index.html">World Stats</a></nav><details class="more toolmenu"><summary>Tools <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu"><a class="primary" href="../seed-map/index.html">Seed Map</a><a class="primary" href="../player/index.html">Player Search</a><a class="primary" href="../world-stats/index.html">World Stats</a><a class="primary" href="../advancements/index.html" aria-current="page">All Advancements</a><a class="primary" href="../collector/index.html#blocks">All Blocks</a><a class="primary" href="../collector/index.html#mobs">All Mobs</a><a class="primary" href="../downloads/index.html">Downloads</a><span class="sep"></span><a href="../ore-finder/index.html">Ore Finder</a><a href="../seed-generator/index.html">Seed Generator</a><a href="../slime-chunks/index.html">Slime Chunks</a><a href="../portal-calculator/index.html">Portal Calculator</a><a href="../circle-generator/index.html">Circle Generator</a><a href="../enchanting/index.html">Enchanting Planner</a><a href="../brewing/index.html">Brewing Guide</a><a href="../pixel-art/index.html">Pixel Art Planner</a></div></details><details class="more lists current"><summary>Checklists <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu"><a href="../advancements/index.html" aria-current="page">All Advancements</a><a href="../collector/index.html#blocks">All Blocks</a><a href="../collector/index.html#mobs">All Mobs</a></div></details><nav class="after" aria-label="Downloads"><a href="../downloads/index.html">Downloads</a></nav><details class="more burger"><summary aria-label="Menu"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></summary><div class="menu"><span class="grp">Tools</span><a href="../world-stats/index.html">World Stats</a><a href="../ore-finder/index.html">Ore Finder</a><a href="../seed-generator/index.html">Seed Generator</a><a href="../slime-chunks/index.html">Slime Chunks</a><a href="../portal-calculator/index.html">Portal Calculator</a><a href="../circle-generator/index.html">Circle Generator</a><a href="../enchanting/index.html">Enchanting Planner</a><a href="../brewing/index.html">Brewing Guide</a><a href="../pixel-art/index.html">Pixel Art Planner</a><span class="sep"></span><span class="grp">Checklists</span><a href="../advancements/index.html" aria-current="page">All Advancements</a><a href="../collector/index.html#blocks">All Blocks</a><a href="../collector/index.html#mobs">All Mobs</a><span class="sep"></span><span class="grp">More</span><a href="../downloads/index.html">Downloads</a><a href="../account/index.html">My account</a></div></details><div class="account"><button type="button" class="signin" aria-haspopup="dialog" aria-expanded="false"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="9" r="4.2" fill="currentColor"/><path d="M3.5 21.5c1.4-4.3 4.6-6.4 8.5-6.4s7.1 2.1 8.5 6.4" fill="currentColor"/></svg></span><span class="lbl">Sign In</span></button><div class="signin-pop" role="dialog" aria-label="Accounts" hidden><b>Accounts are coming soon</b><span>You'll be able to sign in and keep your progress on every device. For now, progress is saved in this browser.</span></div><script defer src="../lib/account-config.js"></script><script defer src="../lib/supabase.js"></script><script defer src="../lib/account.js" data-root="../"></script></div><script>(function(){var h=document.currentScript.parentNode,d=h.querySelectorAll("details");d.forEach(function(x){x.addEventListener("toggle",function(){if(x.open)d.forEach(function(y){if(y!==x)y.open=false;});});});document.addEventListener("click",function(e){d.forEach(function(x){if(x.open&&!x.contains(e.target))x.open=false;});});document.addEventListener("keydown",function(e){if(e.key==="Escape")d.forEach(function(x){x.open=false;});});h.addEventListener("click",function(e){if(e.target.closest(".menu a"))d.forEach(function(x){x.open=false;});});})();</script></header>
+<main class="wrap">
+  <section class="top" data-scene-hero>
+    <div class="title">
+      <h1>Advancement<span>Checklist</span></h1>
+      <p>Tick off every advancement as you earn it. Hover over one, or tap it on a phone, for a step-by-step guide. Your progress is saved in this browser.</p>
+      <button type="button" class="switch" id="switchBtn" aria-haspopup="dialog"><span class="k">Checklist</span><b>Advancements</b><span class="chev" aria-hidden="true">▾</span></button>
+    </div>
+    <div class="overall" aria-live="polite">
+      <div class="big"><b id="doneCount">0</b><span>/ <span id="totalCount">126</span></span></div>
+      <div class="bar"><i id="overallBar"></i></div>
+      <button type="button" class="share-btn" id="shareBtn">Share progress</button>
+    </div>
+  </section>
+<div class="sheet clear">
+
+  <section class="controls" aria-label="Filters">
+    <div class="tabs" id="catTabs" role="tablist"></div>
+    <div class="filters">
+      <input class="field" id="search" type="search" placeholder="Search advancements" aria-label="Search advancements">
+      <select class="field" id="typeFilter" aria-label="Type">
+        <option value="">All types</option><option value="Normal">Normal</option><option value="Hidden">Hidden</option><option value="Challenge">Challenge</option>
+      </select>
+      <label class="check"><input type="checkbox" id="hideDone"> Hide completed</label>
+    </div>
+  </section>
+
+  <section class="layout">
+    <div class="list" id="list" role="list"></div>
+    <div class="side">
+      <aside class="guide" id="guide" aria-live="polite">
+        <div class="guide-inner" id="guideInner">
+          <div class="placeholder">Hover over an advancement to see how to get it.</div>
+        </div>
+      </aside>
+      <div class="ad-slot ad-rect" data-ad-slot="checklist-side"><span class="ad-label">Advertisement</span><div class="ad-box">Ad space · 300 × 250</div></div>
+    </div>
+  </section>
+
+  <div class="foot-ad"><div class="ad-slot ad-leader" data-ad-slot="checklist-bottom"><span class="ad-label">Advertisement</span><div class="ad-box">Ad space · 728 × 90</div></div></div>
+  <footer>
+    <span>NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</span><span class="legal-links"><a href="../terms/index.html">Terms</a> · <a href="../privacy/index.html">Privacy</a></span>
+    <span class="reset"><button type="button" class="link" id="resetBtn">Reset my progress</button><span id="resetConfirm" hidden> Clear all ticks? <button type="button" class="link danger" id="resetYes">Yes, reset</button> <button type="button" class="link" id="resetNo">Cancel</button></span></span>
+  </footer>
+</div>
+</main>
+
+<div class="modal" id="chooser" hidden role="dialog" aria-modal="true" aria-labelledby="chooserTitle">
+  <div class="modal-card">
+    <button type="button" class="modal-x" id="chooserClose" aria-label="Close">×</button>
+    <h2 id="chooserTitle">Choose a checklist</h2>
+    <div class="choices" id="choices"></div>
+  </div>
+</div>
+<script>
+// Shareable progress card: draws a 1200x630 image of the visitor's progress for posting on socials.
+(function () {
+  const st = document.createElement('style');
+    st.textContent = `.share-modal{position:fixed;inset:0;z-index:60;background:rgba(10,14,18,.6);display:grid;place-items:center;padding:16px;animation:sm-fade .18s ease-out}
+.share-modal[hidden]{display:none!important}.share-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:760px;width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.share-card h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:18px}.share-card canvas{width:100%;height:auto;border-radius:10px;border:1px solid var(--line)}
+.share-card .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.share-card .acts button,.share-card .acts a{background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:inherit;font-weight:700;color:inherit;cursor:pointer;text-decoration:none}
+.share-card .acts .primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}.share-card .msg{color:var(--muted);font-size:13px}
+.share-btn{margin-top:4px;background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit;font-weight:700;color:inherit;cursor:pointer;align-self:flex-start}.share-btn:hover{border-color:var(--muted)}
+@keyframes sm-fade{from{opacity:0}}`;
+  document.head.appendChild(st);
+})();
+window.openShareCard = function (opts) {
+  // opts: { title, subtitle, done, total, rows: [[name, done, total, colour]] }
+  let modal = document.getElementById('shareModal');
+  if (!modal) {
+    modal = document.createElement('div'); modal.id = 'shareModal'; modal.className = 'share-modal'; modal.hidden = true;
+    modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); modal.setAttribute('aria-label', 'Share your progress');
+    modal.innerHTML = `<div class="share-card"><h2>Share your progress</h2><canvas width="1200" height="630"></canvas>
+      <div class="acts"><a class="primary" id="shareDl" download="my-progress.png" href="#">Download image</a><button type="button" id="shareCopy">Copy image</button><button type="button" id="shareClose">Close</button><span class="msg" id="shareMsg"></span></div></div>`;
+    document.body.appendChild(modal);
+    const close = () => { modal.hidden = true; };
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    modal.querySelector('#shareClose').onclick = close;
+    addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    modal.querySelector('#shareCopy').onclick = async () => {
+      const msg = modal.querySelector('#shareMsg');
+      try { const blob = await new Promise(r => modal.querySelector('canvas').toBlob(r)); await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); msg.textContent = 'Copied. Paste it into a post or message.'; }
+      catch { msg.textContent = 'Copying isn’t allowed here. Use Download, or right-click the image and save it.'; }
+    };
+  }
+  const cv = modal.querySelector('canvas'), g = cv.getContext('2d'), W = 1200, H = 630;
+  // fixed look so the image is the same in light and dark mode
+  g.fillStyle = '#12181d'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#1b242b'; for (let y = 0; y < H; y += 30) for (let x = (y / 30) % 2 ? 0 : 30; x < W; x += 60) g.fillRect(x, y, 30, 30);
+  g.fillStyle = 'rgba(18,24,29,.82)'; g.fillRect(40, 40, W - 80, H - 80);
+  g.strokeStyle = '#2b353d'; g.lineWidth = 2; g.strokeRect(40, 40, W - 80, H - 80);
+  g.fillStyle = '#e2574c'; g.font = '900 30px "Franklin Gothic Heavy", "Libre Franklin", "Arial Black", sans-serif'; g.fillText('CHUNK HUB', 80, 100);
+  g.fillStyle = '#e3e8ec'; g.font = '900 54px "Franklin Gothic Heavy", "Libre Franklin", "Arial Black", sans-serif'; g.fillText(opts.title, 80, 180);
+  g.fillStyle = '#8d9aa4'; g.font = '28px Calibri, Carlito, system-ui, sans-serif'; g.fillText(opts.subtitle || '', 80, 222);
+  const pct = opts.total ? opts.done / opts.total : 0;
+  g.fillStyle = '#e3e8ec'; g.font = 'bold 120px Calibri, Carlito, system-ui, sans-serif'; g.fillText(`${opts.done}`, 80, 360);
+  const wNum = g.measureText(`${opts.done}`).width;
+  g.fillStyle = '#8d9aa4'; g.font = 'bold 48px Calibri, Carlito, system-ui, sans-serif'; g.fillText(`/ ${opts.total}  ·  ${Math.round(pct * 100)}%`, 80 + wNum + 18, 360);
+  g.fillStyle = '#2b353d'; g.fillRect(80, 392, 520, 22); g.fillStyle = '#5cc287'; g.fillRect(80, 392, Math.round(520 * pct), 22);
+  const rows = (opts.rows || []).slice(0, 8);
+  rows.forEach(([name, d, t, col], i) => {
+    const y = 120 + i * 52, x = 680;
+    g.fillStyle = col || '#5cc287'; g.fillRect(x, y - 16, 14, 14);
+    g.fillStyle = '#e3e8ec'; g.font = 'bold 26px Calibri, Carlito, system-ui, sans-serif'; g.fillText(name, x + 26, y - 2);
+    g.fillStyle = '#8d9aa4'; g.font = '24px Calibri, Carlito, system-ui, sans-serif'; const s = `${d}/${t}`; g.fillText(s, W - 80 - g.measureText(s).width, y - 2);
+    g.fillStyle = '#2b353d'; g.fillRect(x, y + 8, W - 80 - x, 8); g.fillStyle = col || '#5cc287'; g.fillRect(x, y + 8, Math.round((W - 80 - x) * (t ? d / t : 0)), 8);
+  });
+  g.fillStyle = '#5d6973'; g.font = '20px Calibri, Carlito, system-ui, sans-serif'; g.fillText('Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.', 80, H - 64);
+  try { modal.querySelector('#shareDl').href = cv.toDataURL('image/png'); } catch {}
+  modal.querySelector('#shareMsg').textContent = '';
+  modal.hidden = false;
+};
+
+// Advancement list (from the Advancements Checklist spreadsheet) with original step-by-step guides.
+// c: category, n: name, t: type, g: goal in one line, s: steps, sub: key of a sub-checklist
+const ADV = [
+// ---------------- Story ----------------
+{c:'Story',n:'Minecraft',t:'Normal',g:'Get a crafting table into your inventory.',s:[
+ 'Punch a tree to collect a few logs.','Open your inventory and turn the logs into planks.','Put four planks in the 2×2 crafting grid to make a crafting table.','Take the table out of the grid. The advancement pops as it lands in your inventory.']},
+{c:'Story',n:'Stone Age',t:'Normal',g:'Mine stone with a new pickaxe.',s:[
+ 'Craft a wooden pickaxe: three planks across the top and two sticks down the middle.','Find exposed stone on a hillside, in a cave or by digging down a few blocks.','Mine it with the pickaxe and pick up the cobblestone.']},
+{c:'Story',n:'Getting an Upgrade',t:'Normal',g:'Craft a stone pickaxe.',s:[
+ 'Mine at least three cobblestone with your wooden pickaxe.','Place a crafting table and put three cobblestone across the top row and two sticks down the middle.','Take the stone pickaxe out to finish.']},
+{c:'Story',n:'Acquire Hardware',t:'Normal',g:'Smelt an iron ingot.',s:[
+ 'Mine raw iron from iron ore with a stone pickaxe. Iron is common in caves and on mountain sides.','Craft a furnace from eight cobblestone in a ring.','Put raw iron in the top slot and coal, charcoal or planks in the bottom slot.','Take the iron ingot out of the result slot.']},
+{c:'Story',n:'Suit Up',t:'Normal',g:'Wear any piece of iron armor.',s:[
+ 'Smelt at least five iron ingots.','Craft iron boots (four ingots) or another piece of iron armor.','Equip it by right-clicking with it in hand or dragging it into an armor slot.']},
+{c:'Story',n:'Hot Stuff',t:'Normal',g:'Fill a bucket with lava.',s:[
+ 'Craft a bucket from three iron ingots in a V shape.','Find lava: deep caves below Y 0, surface lava pools, or the Nether.','Stand next to a lava source block and use the empty bucket on it. Keep a block ready in case you need to wall it off.']},
+{c:'Story',n:"Isn't It Iron Pick",t:'Normal',g:'Craft an iron pickaxe.',s:[
+ 'Smelt three iron ingots.','At a crafting table, put the ingots across the top row and two sticks down the middle.','Take the iron pickaxe out.']},
+{c:'Story',n:'Not Today, Thank You',t:'Normal',g:'Block a projectile with a shield.',s:[
+ 'Craft a shield: six planks in a Y shape with one iron ingot in the top middle.','Hold it in your off-hand and find a skeleton at night or in a dark cave.','Hold right-click to raise the shield while it shoots at you. Blocking one arrow is enough.']},
+{c:'Story',n:'Ice Bucket Challenge',t:'Normal',g:'Mine obsidian.',s:[
+ 'Get a diamond pickaxe. Nothing weaker can mine obsidian.','Make obsidian by pouring water onto a lava source, or find it near lava pools and ruined portals.','Mine the obsidian (it takes about ten seconds) and pick it up.']},
+{c:'Story',n:'Diamonds!',t:'Normal',g:'Pick up a diamond.',s:[
+ 'Bring an iron pickaxe. Stone won’t drop diamonds.','Strip-mine or explore caves around Y −58, where diamonds are most common. The Ore Finder on this site can point you to veins.','Mine the diamond ore and collect the diamond.']},
+{c:'Story',n:'We Need to Go Deeper',t:'Normal',g:'Enter the Nether.',s:[
+ 'Collect at least ten obsidian, or use buckets of water and lava to build the frame in place.','Build a 4 wide by 5 tall obsidian frame (the corners are optional).','Light the inside with flint and steel or a fire charge.','Step through the purple portal.']},
+{c:'Story',n:'Cover Me with Diamonds',t:'Normal',g:'Wear any piece of diamond armor.',s:[
+ 'Collect at least four diamonds.','Craft diamond boots, or any other diamond armor piece.','Put it on.']},
+{c:'Story',n:'Enchanter',t:'Normal',g:'Enchant an item at an enchanting table.',s:[
+ 'Craft an enchanting table from a book, two diamonds and four obsidian.','Gain at least one experience level by mining, smelting or fighting.','Put a tool, weapon, armor piece or book in the table with lapis lazuli and pick any enchantment.']},
+{c:'Story',n:'Zombie Doctor',t:'Normal',g:'Cure a zombie villager.',s:[
+ 'Find a zombie villager. They appear at night and sometimes in abandoned villages or igloo basements.','Trap it somewhere shaded so it won’t burn, such as a small roofed hut.','Throw a splash potion of weakness at it (fermented spider eye plus water bottle, then add gunpowder).','Feed it a golden apple. It shakes and turns back into a villager after a few minutes.']},
+{c:'Story',n:'Eye Spy',t:'Normal',g:'Enter a stronghold.',s:[
+ 'Craft eyes of ender from ender pearls and blaze powder.','Throw an eye and walk the way it flies. Repeat until it drops straight down.','Dig down at that spot until you break into the stronghold’s stone-brick corridors. The Seed Map on this site shows stronghold locations too.']},
+{c:'Story',n:'The End?',t:'Normal',g:'Enter the End.',s:[
+ 'Find the stronghold’s portal room (it has a lava pool and a silverfish spawner).','Fill each empty frame block with an eye of ender. Most portals need about ten.','Jump into the portal. Bring blocks, a bow and food for the fight that follows.']},
+
+// ---------------- Nether ----------------
+{c:'Nether',n:'Nether',t:'Normal',g:'Visit the Nether.',s:['Build and light a nether portal (see We Need to Go Deeper).','Step through. Entering the Nether unlocks this tab straight away.']},
+{c:'Nether',n:'Those Were the Days',t:'Normal',g:'Enter a bastion remnant.',s:[
+ 'Look in any Nether biome except basalt deltas for a large blackstone castle. The Seed Map can locate one.','Wear at least one piece of gold armor so most piglins stay calm.','Walk inside the bastion’s bounds to unlock it. Watch out for piglin brutes, which attack regardless.']},
+{c:'Nether',n:'Hidden in the Depths',t:'Normal',g:'Obtain ancient debris.',s:[
+ 'Bring a diamond or netherite pickaxe.','Mine at Y 8 to 22 in the Nether, ideally Y 15.','Ancient debris doesn’t glow and resists explosions, so beds or TNT can clear netherrack quickly. The Ore Finder can predict where it is.','Mine the debris and pick it up.']},
+{c:'Nether',n:'A Terrible Fortress',t:'Normal',g:'Enter a Nether fortress.',s:[
+ 'Explore the Nether for dark red brick bridges and towers. Fortresses run in long lines, so travel east–west or north–south.','Walk into the fortress. Blazes and wither skeletons live here, so bring armor and a bow.']},
+{c:'Nether',n:'Who is Cutting Onions?',t:'Normal',g:'Obtain crying obsidian.',s:[
+ 'Check ruined portals in either dimension. They often include crying obsidian.','Bastion chests and piglin bartering can also give it.','Mine it with a diamond pickaxe and pick it up.']},
+{c:'Nether',n:'Oh Shiny',t:'Normal',g:'Distract a piglin with gold.',s:[
+ 'Get a gold ingot.','Find a piglin in a crimson forest, nether wastes or bastion.','Drop the gold ingot near it, or right-click it while holding the ingot. It picks the gold up and inspects it.']},
+{c:'Nether',n:'This Boat Has Legs',t:'Normal',g:'Ride a strider with a warped fungus on a stick.',s:[
+ 'Craft a fishing rod and combine it with a warped fungus.','Find a strider walking on Nether lava.','Put a saddle on it (saddles come from chests, fishing or trading, or can be crafted in newer versions).','Get on and hold the fungus on a stick to steer it.']},
+{c:'Nether',n:'War Pigs',t:'Normal',g:'Loot a chest inside a bastion remnant.',s:[
+ 'Find a bastion remnant and wear gold armor.','Chests sit on the bridges, in the treasure room and around the hoglin stables.','Open any of them. Opening a chest angers nearby piglins, so be ready to leave.']},
+{c:'Nether',n:'Spooky Scary Skeleton',t:'Normal',g:'Get a wither skeleton skull.',s:[
+ 'Go to a Nether fortress.','Kill wither skeletons, which have about a 2.5% chance to drop a skull. A Looting III sword raises this.','Keep going until one drops and pick it up.']},
+{c:'Nether',n:'Into Fire',t:'Normal',g:'Get a blaze rod.',s:[
+ 'Find a blaze spawner in a Nether fortress (look for a small room with a caged spawner).','Kill blazes with a sword or snowballs. Fire resistance helps.','Pick up a blaze rod.']},
+{c:'Nether',n:'Not Quite "Nine" Lives',t:'Normal',g:'Charge a respawn anchor to the max.',s:[
+ 'Craft a respawn anchor from six crying obsidian and three glowstone blocks.','Place it in the Nether.','Use four glowstone blocks on it one by one until all four levels light up.']},
+{c:'Nether',n:'Feels Like Home',t:'Normal',g:'Ride a strider 50 blocks across lava in the Overworld.',s:[
+ 'Lead a saddled strider to a portal while riding it with a warped fungus on a stick, and go through to the Overworld.','Find a big lava lake in the Overworld, or pour your own with buckets.','Ride the strider at least 50 blocks across lava in the Overworld.']},
+{c:'Nether',n:'Withering Heights',t:'Normal',g:'Summon the Wither.',s:[
+ 'Collect three wither skeleton skulls and four soul sand or soul soil.','Pick a safe spot far from home, ideally underground or in the Nether roof area.','Build a T of soul sand, then place the three skulls on top. The last skull you place spawns the Wither.']},
+{c:'Nether',n:'Local Brewery',t:'Normal',g:'Brew a potion.',s:[
+ 'Craft a brewing stand from a blaze rod and three cobblestone.','Fuel it with blaze powder and add water bottles.','Brew a nether wart in first to make awkward potions, then take any finished potion out.']},
+{c:'Nether',n:'Bring Home the Beacon',t:'Normal',g:'Build and activate a beacon.',s:[
+ 'Defeat the Wither to get a nether star.','Craft a beacon from the star, three obsidian and five glass.','Build a 3×3 base of iron, gold, emerald, diamond or netherite blocks and put the beacon on top with a clear view of the sky.']},
+{c:'Nether',n:'Beaconator',t:'Normal',g:'Power a full four-layer beacon.',s:[
+ 'You need 164 mineral blocks for the full pyramid (9 + 25 + 49 + 81).','Iron is the cheapest material: an iron farm makes this quick.','Build layers of 9×9, 7×7, 5×5 and 3×3 with the beacon on top. You need to be near it when it activates.']},
+{c:'Nether',n:'How Did We Get Here?',t:'Hidden',g:'Have every listed status effect on you at the same time.',s:[
+ 'This is the hardest advancement. Prepare a list of all effects your version counts, including levitation, bad omen, conduit power, hero of the village and others.','Brew and store every potion you can, and set up sources for the rest (shulker for levitation, conduit, raid for hero of the village, suspicious stew, pufferfish).','Stack effects with long durations first, then trigger the short ones last, all within a few seconds.','Check your effects list. Once every required effect is active at once, it unlocks.']},
+{c:'Nether',n:'Return to Sender',t:'Challenge',g:'Kill a ghast with its own fireball.',s:[
+ 'Find a ghast in an open Nether biome such as the wastes or soul sand valley.','When it shoots a fireball, hit the fireball back with your hand, a sword or an arrow.','The reflected fireball must kill the ghast. Weaken it first with arrows if needed, then finish it with a deflection.']},
+{c:'Nether',n:'Subspace Bubble',t:'Challenge',g:'Use the Nether to travel 7 km in the Overworld.',s:[
+ 'Light a portal in the Nether at least 875 blocks from your entry portal (Nether distances count ×8).','Go through it to create a matching portal in the Overworld.','The Overworld exit must be at least 7,000 blocks from where you entered.']},
+{c:'Nether',n:'Uneasy Alliance',t:'Challenge',g:'Bring a ghast to the Overworld and kill it there.',s:[
+ 'Build a portal near a ghast, or lure one close to a portal.','Push or lead it through. A boat with the ghast inside, or a fishing rod, helps.','Once it’s in the Overworld, kill it there.']},
+{c:'Nether',n:'Cover Me in Debris',t:'Challenge',g:'Wear a full set of netherite armor.',s:[
+ 'Mine at least 16 ancient debris and smelt it into netherite scrap.','Combine four scrap and four gold ingots into each netherite ingot. You need four ingots.','Find netherite upgrade templates in bastion chests and duplicate them with diamonds and netherrack.','Upgrade a full set of diamond armor at a smithing table and wear all four pieces.']},
+{c:'Nether',n:'Hot Tourist Destinations',t:'Challenge',sub:'nether',g:'Visit all five Nether biomes.',s:[
+ 'Visit nether wastes, crimson forest, warped forest, soul sand valley and basalt deltas.','Check the F3 screen if you aren’t sure which biome you’re standing in.','Basalt deltas are the hardest to cross. Bring blocks and fire resistance.']},
+{c:'Nether',n:'A Furious Cocktail',t:'Challenge',g:'Have every potion effect active at the same time.',s:[
+ 'Brew one of each: speed, slowness, strength, weakness, poison, regeneration, fire resistance, water breathing, invisibility, night vision, jump boost, slow falling, plus turtle master and others your version needs.','Use extended versions with redstone so they last long enough.','Drink and splash them in quick order, longest first.','Once every required effect shows at once, it unlocks.']},
+
+// ---------------- The End ----------------
+{c:'The End',n:'The End',t:'Normal',g:'Enter the End.',s:['Activate the End portal in a stronghold and jump in. This unlocks the tab.']},
+{c:'The End',n:'Free the End',t:'Normal',g:'Kill the ender dragon.',s:[
+ 'Destroy the end crystals on top of the obsidian pillars with arrows. Caged ones need a climb.','Hit the dragon when it perches on the exit portal, using a sword or bow.','Beds explode in the End and do huge damage when the dragon perches, if you’re brave.','Keep going until it dies.']},
+{c:'The End',n:'Remote Getaway',t:'Normal',g:'Escape the main island through an end gateway.',s:[
+ 'After the dragon dies, a small gateway portal appears near the island’s edge.','Throw an ender pearl into it, since it’s too small to walk into.','You’re teleported to the outer islands.']},
+{c:'The End',n:'The City at the End of the Game',t:'Normal',g:'Enter an end city.',s:[
+ 'Travel through an end gateway to the outer islands.','Look for tall purple towers. The Seed Map shows end cities, including which ones have ships.','Step inside the city’s bounds.']},
+{c:'The End',n:'The Next Generation',t:'Normal',g:'Hold the dragon egg.',s:[
+ 'Kill the dragon. The egg appears on top of the exit portal.','The egg teleports when hit, so push it off with a piston, or place a torch below it and break the block underneath so it falls and drops as an item.','Pick up the egg.']},
+{c:'The End',n:'The End... Again...',t:'Normal',g:'Respawn the ender dragon.',s:[
+ 'Craft four end crystals (glass, an eye of ender and a ghast tear each).','Place one on each side of the exit portal in the middle of the island.','The dragon respawns. Unlocking happens when it starts.']},
+{c:'The End',n:'You Need a Mint',t:'Normal',g:'Collect dragon’s breath in a glass bottle.',s:[
+ 'Fight the ender dragon (or a respawned one).','When it breathes purple clouds on the ground, use an empty glass bottle on the cloud.','You get a bottle of dragon’s breath.']},
+{c:'The End',n:"Sky's the Limit",t:'Normal',g:'Find an elytra.',s:[
+ 'Find an end city that has an end ship floating beside it. The Seed Map marks these with a wings icon.','Climb onto the ship and break the item frame at the back.','Pick up the elytra.']},
+{c:'The End',n:'Great View From Up Here',t:'Challenge',g:'Levitate up 50 blocks from shulker attacks.',s:[
+ 'Find shulkers in an end city.','Let one hit you with its bullets to get levitation.','Stay in the open so you rise freely. Get hit repeatedly to keep rising until you’re 50 blocks up. Have a water bucket or slow falling ready for the way down.']},
+
+// ---------------- Adventure ----------------
+{c:'Adventure',n:'Adventure',t:'Normal',g:'Kill or be killed by anything.',s:['Kill any mob, or die to one. Either unlocks the tab.']},
+{c:'Adventure',n:'Is It a Bird?',t:'Normal',g:'Look at a parrot through a spyglass.',s:[
+ 'Craft a spyglass from two copper ingots and an amethyst shard.','Find parrots in jungle biomes.','Use the spyglass and centre a parrot in it.']},
+{c:'Adventure',n:'Country Lode, Take Me Home',t:'Normal',g:'Use a compass on a lodestone.',s:[
+ 'Craft a lodestone from chiseled stone bricks around an iron ingot (versions before 1.21 need a netherite ingot instead).','Place it and craft a compass.','Use the compass on the lodestone.']},
+{c:'Adventure',n:'Monster Hunter',t:'Normal',g:'Kill any hostile monster.',s:['Kill a zombie, skeleton, spider, creeper or any other hostile mob.']},
+{c:'Adventure',n:'The Power of Books',t:'Normal',g:'Read a chiseled bookshelf’s power with a comparator.',s:[
+ 'Craft a chiseled bookshelf (six planks and three wooden slabs) and some books.','Place a comparator facing out of the bookshelf.','Insert a book. The comparator outputs a signal, which unlocks the advancement.']},
+{c:'Adventure',n:'What a Deal!',t:'Normal',g:'Trade with a villager.',s:['Find a villager with a profession (they wear work clothes).','Right-click it and complete any trade.']},
+{c:'Adventure',n:'Crafting a New Look',t:'Normal',g:'Apply an armor trim at a smithing table.',s:[
+ 'Find any armor trim template in a structure chest (for example a trail ruins, desert temple or end city).','Place the template, an armor piece and a trim material (iron, gold, diamond, emerald, lapis, quartz, redstone, amethyst, copper, netherite or resin) in a smithing table.','Take the trimmed armor out.']},
+{c:'Adventure',n:'Sticky Situation',t:'Normal',g:'Slide down a honey block.',s:[
+ 'Craft a honey block from four honey bottles.','Place it against a wall, high enough to fall alongside.','Jump onto the side of the block while falling. You slide slowly down it.']},
+{c:'Adventure',n:"Ol' Betsy",t:'Normal',g:'Shoot a crossbow.',s:['Craft a crossbow from sticks, string, an iron ingot and a tripwire hook.','Load an arrow and fire it.']},
+{c:'Adventure',n:'Surge Protector',t:'Normal',g:'Protect a villager from lightning without starting a fire.',s:[
+ 'Place a lightning rod near a villager during a thunderstorm.','Make sure nothing flammable is nearby, so the strike doesn’t set fires.','Stay within range while lightning hits the rod. The villager must not be harmed or turned into a witch.']},
+{c:'Adventure',n:'Caves & Cliffs',t:'Normal',g:'Fall from the top of the world to the bottom and survive.',s:[
+ 'Build a tower up to the build limit at Y 319.','Put water at the very bottom of the world (Y −59 or lower), right below the tower.','Jump off the top and land in the water.']},
+{c:'Adventure',n:'Respecting the Remnants',t:'Normal',g:'Brush a suspicious block to find a pottery sherd.',s:[
+ 'Craft a brush from a feather, a copper ingot and a stick.','Find suspicious sand or gravel in desert temples, desert wells, warm ocean ruins or trail ruins.','Brush it until an item pops out. The advancement needs a pottery sherd to come out.']},
+{c:'Adventure',n:'Sneak 100',t:'Normal',g:'Sneak near a sculk sensor or warden without triggering it.',s:[
+ 'Find a sculk sensor in a deep dark area or ancient city.','Hold sneak and walk close to it.','Moving while sneaking within its range, without making it react, is enough.']},
+{c:'Adventure',n:'Sweet Dreams',t:'Normal',g:'Sleep in a bed.',s:['Craft a bed from three wool and three planks.','Sleep in it at night, or during a thunderstorm.']},
+{c:'Adventure',n:'Is It a Balloon?',t:'Normal',g:'Look at a ghast through a spyglass.',s:['Bring a spyglass to the Nether.','Find a ghast in an open biome and zoom in on it.']},
+{c:'Adventure',n:'A Throwaway Joke',t:'Normal',g:'Hit a mob with a thrown trident.',s:[
+ 'Get a trident by killing drowned. Only those holding one can drop it.','Hold right-click to charge, then release to throw it at any mob.']},
+{c:'Adventure',n:'Take Aim',t:'Normal',g:'Shoot something with an arrow.',s:['Craft a bow and arrows.','Hit any mob with an arrow.']},
+{c:'Adventure',n:'Postmortal',t:'Normal',g:'Use a totem of undying.',s:[
+ 'Get a totem of undying from an evoker in a woodland mansion or a raid.','Hold it in either hand.','Take damage that would kill you. The totem saves you and unlocks the advancement.']},
+{c:'Adventure',n:'Mob Kabob',t:'Normal',g:'Hit five mobs with one spear charge.',s:[
+ 'Get a spear (craft one or find one on mobs).','Group at least five mobs in a line, for example in a mob farm corridor or a pen of animals.','Charge the spear into them so a single charge hits five at once.']},
+{c:'Adventure',n:'Hired Help',t:'Normal',g:'Build an iron golem.',s:[
+ 'Collect four iron blocks and a carved pumpkin.','Build a T of iron blocks and place the pumpkin on top last.']},
+{c:'Adventure',n:'Star Trader',t:'Normal',g:'Trade with a villager at the build limit.',s:[
+ 'Build a tower up to Y 319.','Get a villager up there with you, for example with a boat on a staircase or by trading with a wandering trader that you lead up.','Trade while standing at the build limit.']},
+{c:'Adventure',n:"Who's the Pillager Now?",t:'Normal',g:'Kill a pillager with a crossbow.',s:[
+ 'Find pillagers at an outpost or during a raid.','Kill one using a crossbow shot as the final hit.']},
+{c:'Adventure',n:'Careful Restoration',t:'Normal',g:'Make a decorated pot from four pottery sherds.',s:[
+ 'Brush suspicious blocks for pottery sherds. Any sherds work, and they can be the same design.','Arrange four sherds in a diamond in the crafting grid.','Take the decorated pot out.']},
+{c:'Adventure',n:'Sound of Music',t:'Normal',g:'Play music from a jukebox in a meadow.',s:[
+ 'Craft a jukebox from planks and a diamond, and get any music disc.','Find a meadow (flower fields in the mountains).','Place the jukebox there and insert the disc.']},
+{c:'Adventure',n:'Light as a Rabbit',t:'Normal',g:'Walk on powder snow without sinking.',s:[
+ 'Wear leather boots.','Find powder snow in snowy slopes or grove biomes, or collect it with a bucket from a cauldron during snowfall.','Walk across it.']},
+{c:'Adventure',n:'Is It a Plane?',t:'Normal',g:'Look at the ender dragon through a spyglass.',s:['Take a spyglass to the End.','Zoom in on the ender dragon while it flies.']},
+{c:'Adventure',n:'Very Very Frightening',t:'Normal',g:'Strike a villager with lightning.',s:[
+ 'Get a trident enchanted with Channeling.','Wait for a thunderstorm and stand near a villager in the open.','Throw the trident at the villager. The lightning turns it into a witch.']},
+{c:'Adventure',n:'Heart Transplanter',t:'Normal',g:'Place a creaking heart correctly between pale oak logs.',s:[
+ 'Find a pale garden and mine a creaking heart out of a pale oak tree with a Silk Touch tool, otherwise it only drops resin.','Place a pale oak log, then the creaking heart, then another pale oak log in a straight line.','All three must be aligned the same way, for example all vertical.']},
+{c:'Adventure',n:'Minecraft: Trial(s) Edition',t:'Normal',g:'Enter trial chambers.',s:['Find trial chambers underground. They have copper and tuff corridors. The Seed Map marks them.','Walk inside.']},
+{c:'Adventure',n:'Under Lock and Key',t:'Normal',g:'Unlock a vault with a trial key.',s:[
+ 'Defeat a trial spawner’s waves in trial chambers to earn a trial key.','Find a vault (the cage-like block with a key hole).','Use the key on it.']},
+{c:'Adventure',n:'Revaulting',t:'Normal',g:'Unlock an ominous vault with an ominous trial key.',s:[
+ 'Get Bad Omen by drinking an ominous bottle (dropped by raid captains or found in vaults).','Enter trial chambers. The omen turns into Trial Omen and spawners become ominous.','Beat an ominous spawner to get an ominous trial key.','Use it on an ominous vault.']},
+{c:'Adventure',n:'Who Needs Rockets',t:'Normal',g:'Launch yourself 8 blocks up with a wind charge.',s:[
+ 'Get wind charges by killing breezes in trial chambers.','Jump and throw a wind charge at your feet as you leave the ground.','Rising 8 or more blocks unlocks it.']},
+{c:'Adventure',n:'Crafters Crafting Crafters',t:'Normal',g:'Use a crafter to craft a crafter.',s:[
+ 'Craft a crafter (iron, a crafting table, a dropper and redstone).','Fill a second crafter’s grid with the crafter recipe.','Power it with a redstone signal pulse while you’re nearby.']},
+{c:'Adventure',n:'Lighten Up',t:'Normal',g:'Brighten a copper bulb by scraping it with an axe.',s:[
+ 'Craft or find a copper bulb that has weathered or oxidised a little.','Use an axe on it to scrape off a stage of oxidation.']},
+{c:'Adventure',n:'Voluntary Exile',t:'Hidden',g:'Kill a raid captain.',s:['Find a pillager carrying a banner on its head at an outpost or patrol.','Kill it.']},
+{c:'Adventure',n:'Hero of the Village',t:'Hidden',g:'Defend a village from a raid.',s:[
+ 'Kill a raid captain to get Bad Omen (in newer versions, drink the ominous bottle it drops).','Walk into a village to start a raid.','Defeat every wave. Bring a shield, a crossbow or bow, and a totem if you have one.']},
+{c:'Adventure',n:'Arbalistic',t:'Hidden',g:'Kill five different mob types with one crossbow shot.',s:[
+ 'Enchant a crossbow with Piercing IV.','Line up five different mob types in a corridor (for example via a mob farm or trapped mobs).','Fire one shot that kills all five. Weaken them first so one arrow finishes them.']},
+{c:'Adventure',n:'It Spreads',t:'Challenge',g:'Kill a mob near a sculk catalyst.',s:['Find a sculk catalyst in the deep dark.','Kill any mob within a few blocks of it so sculk spreads.']},
+{c:'Adventure',n:'Monsters Hunted',t:'Challenge',sub:'monsters',g:'Kill every hostile monster.',s:[
+ 'Use the checklist below to track which monsters you’ve killed.','Raids give most illagers at once. Ocean monuments give guardians and the elder guardian.','Rare ones: zombie horse (skeleton trap or zombie variant), zoglin (hoglin taken to the Overworld), endermite (ender pearl throws), creaking (pale garden at night).']},
+{c:'Adventure',n:'Smithing with Style',t:'Challenge',sub:'templates',g:'Apply each listed armor trim at least once.',s:[
+ 'Collect the templates in the checklist below from their structures.','Copy any template with seven diamonds and its matching block, so you only need one of each.','Apply each one to any armor piece at a smithing table.']},
+{c:'Adventure',n:'Two Birds, One Arrow',t:'Challenge',g:'Kill two phantoms with one piercing arrow.',s:[
+ 'Enchant a crossbow with Piercing.','Stay awake for three nights so phantoms spawn.','Wait for two to line up and shoot through both.']},
+{c:'Adventure',n:'Adventuring Time',t:'Challenge',sub:'biomes',g:'Visit every Overworld biome.',s:[
+ 'Tick off biomes in the checklist below as you visit them.','Use the Seed Map on this site to find the ones you’re missing.','Underground biomes (deep dark, dripstone caves, lush caves, sulfur caves) count too.']},
+{c:'Adventure',n:'Sniper Duel',t:'Challenge',g:'Kill a skeleton from 50 blocks away.',s:[
+ 'Find a skeleton in an open area at night.','Back off at least 50 blocks horizontally.','Shoot it with a bow until it dies. Power enchantments help.']},
+{c:'Adventure',n:'Bullseye',t:'Challenge',g:'Hit the bullseye of a target block from 30 blocks away.',s:[
+ 'Craft a target block from hay bale and redstone.','Stand at least 30 blocks away.','Hit its exact centre with an arrow. A redstone signal of 15 means a bullseye.']},
+{c:'Adventure',n:'Over-Overkill',t:'Challenge',g:'Deal 50 hearts of damage in one hit with a mace.',s:[
+ 'Craft a mace from a heavy core and a breeze rod.','Enchant it with Density.','Fall from a great height (pearls or wind charges) and smash a mob. A long fall with Density deals enough damage.']},
+{c:'Adventure',n:'Blowback',t:'Challenge',g:'Kill a breeze with its own wind charge.',s:[
+ 'Find a breeze in trial chambers.','Hit its wind charge back at it with a melee hit or arrow.','Weaken the breeze first so the deflected charge lands the final blow.']},
+
+// ---------------- Husbandry ----------------
+{c:'Husbandry',n:'Husbandry',t:'Normal',g:'Eat anything.',s:['Eat any food. This unlocks the tab.']},
+{c:'Husbandry',n:'Bee Our Guest',t:'Normal',g:'Collect honey without angering bees.',s:[
+ 'Place a campfire under a bee nest or beehive.','Wait until it fills (honey drips out).','Use a glass bottle on it.']},
+{c:'Husbandry',n:'Stay Hydrated!',t:'Normal',g:'Put a dried ghast in water.',s:[
+ 'Get a dried ghast block from Nether fossils in soul sand valleys, or craft one from ghast tears and soul sand.','Place it in a water source block.']},
+{c:'Husbandry',n:'The Parrots and the Bats',t:'Normal',g:'Breed two animals together.',s:['Feed two animals of the same type their breeding food (for example wheat for cows).','A baby spawns between them.']},
+{c:'Husbandry',n:'Whatever Floats Your Goat!',t:'Normal',g:'Get in a boat with a goat.',s:[
+ 'Find a goat in snowy slopes, jagged peaks or frozen peaks.','Place a boat next to it and push the goat in.','Get in the other seat.']},
+{c:'Husbandry',n:'Best Friends Forever',t:'Normal',g:'Tame an animal.',s:['Tame a wolf with bones, a cat with raw fish, or a horse by riding it.']},
+{c:'Husbandry',n:'Glow and Behold!',t:'Normal',g:'Make a sign glow with a glow ink sac.',s:['Kill a glow squid in a dark underwater cave to get a glow ink sac.','Use it on any sign with text.']},
+{c:'Husbandry',n:'Fishy Business',t:'Normal',g:'Catch a fish.',s:['Craft a fishing rod and cast it into water.','Reel in when the bobber dips. Any fish counts.']},
+{c:'Husbandry',n:'Total Beelocation',t:'Normal',g:'Move a bee nest with three bees inside using Silk Touch.',s:[
+ 'Find a bee nest with three bees in it (check at night when they’re home).','Mine it with a Silk Touch tool.','Place it somewhere else.']},
+{c:'Husbandry',n:'Bukkit Bukkit',t:'Normal',g:'Catch a tadpole in a bucket.',s:['Find tadpoles hatching from frogspawn in swamps.','Use a water bucket on one.']},
+{c:'Husbandry',n:'A Seedy Place',t:'Normal',g:'Plant a seed.',s:['Get wheat seeds by breaking grass.','Till dirt with a hoe and plant the seeds.']},
+{c:'Husbandry',n:'Wax On',t:'Normal',g:'Wax a copper block with honeycomb.',s:['Get honeycomb by shearing a full bee nest.','Use it on any copper block.']},
+{c:'Husbandry',n:'Tactical Fishing',t:'Normal',g:'Catch a fish in a bucket.',s:['Find cod, salmon, pufferfish or tropical fish in the ocean or rivers.','Use a water bucket on one.']},
+{c:'Husbandry',n:'When the Squad Hops into Town',t:'Normal',sub:'frogs',g:'Get each frog type on a lead.',s:[
+ 'Frogs come in temperate, warm and cold types, depending on where their tadpole grows up.','Raise tadpoles in a plain swamp, a warm biome (desert or jungle) and a cold biome (snowy), or find each type in the wild.','Put a lead on all three at once.']},
+{c:'Husbandry',n:'Wax Off',t:'Normal',g:'Scrape wax off a copper block.',s:['Wax a copper block (see Wax On).','Use an axe on it.']},
+{c:'Husbandry',n:'The Cutest Predator',t:'Normal',g:'Catch an axolotl in a bucket.',s:['Find axolotls in lush caves.','Use a water bucket on one.']},
+{c:'Husbandry',n:'With Our Powers Combined!',t:'Normal',sub:'froglights',g:'Have all three froglights in your inventory.',s:[
+ 'Get one frog of each type (see When the Squad Hops into Town).','Lure magma cubes near them in the Nether. Each frog type turns small magma cubes into a different froglight.','Collect all three colours.']},
+{c:'Husbandry',n:'The Healing Power of Friendship!',t:'Normal',g:'Team up with an axolotl and win a fight.',s:[
+ 'Bring axolotls into water where hostile mobs are (drowned or guardians).','Fight alongside them. When an axolotl kills a mob you’re fighting, it gives you regeneration.']},
+{c:'Husbandry',n:"Isn't It Scute?",t:'Normal',g:'Brush an armadillo for a scute.',s:['Find armadillos in savanna or badlands biomes.','Use a brush on one.']},
+{c:'Husbandry',n:'Shear Brilliance',t:'Normal',g:'Remove wolf armor from a wolf with shears.',s:['Put wolf armor on your tamed wolf.','Use shears on the wolf.']},
+{c:'Husbandry',n:'Good as New',t:'Normal',g:'Repair damaged wolf armor with an armadillo scute.',s:[
+ 'Let your wolf’s armor take damage.','Use an armadillo scute on the wolf to repair it.']},
+{c:'Husbandry',n:'Uh Oh',t:'Normal',g:'Have a sulfur cube absorb TNT.',s:[
+ 'Find a sulfur cube in a sulfur caves biome (added in 26.2).','Hold a TNT block near it, or use the TNT on it, so it absorbs the block.','It becomes an explosive cube, so keep it away from fire, redstone and explosions.']},
+{c:'Husbandry',n:"You've Got a Friend in Me",t:'Hidden',g:'Have an allay deliver an item to you.',s:[
+ 'Free an allay from a pillager outpost cage or woodland mansion jail.','Give it an item.','Drop the same item nearby. The allay brings you copies it finds.']},
+{c:'Husbandry',n:'Smells Interesting',t:'Hidden',g:'Obtain a sniffer egg.',s:['Brush suspicious sand in warm ocean ruins until a sniffer egg drops.']},
+{c:'Husbandry',n:'Birthday Song',t:'Hidden',g:'Have an allay drop a cake at a note block.',s:[
+ 'Give an allay a cake.','Play a note block nearby. Allays head to it and drop items there.','Drop a cake for the allay to collect and bring to the note block.']},
+{c:'Husbandry',n:'Little Sniffs',t:'Hidden',g:'Feed a snifflet.',s:['Hatch a sniffer egg on moss blocks for faster hatching.','Feed the baby sniffer torchflower seeds.']},
+{c:'Husbandry',n:'Planting the Past',t:'Hidden',g:'Plant any sniffer seed.',s:['Let an adult sniffer dig up torchflower seeds or pitcher pods.','Plant either one on farmland.']},
+{c:'Husbandry',n:'Two by Two',t:'Challenge',sub:'breeding',g:'Breed every breedable animal.',s:[
+ 'Work through the checklist below. It shows the breeding food for each.','Mules come from a horse and a donkey, not two mules.','Some animals must be tamed or trusted first (cats, wolves, foxes, llamas).']},
+{c:'Husbandry',n:'A Complete Catalogue',t:'Challenge',sub:'cats',g:'Tame every cat variant.',s:[
+ 'Tame stray cats in villages with raw cod or salmon. Their variant is random.','The all black cat only spawns at swamp huts.','Use the checklist below to track the variants you still need.']},
+{c:'Husbandry',n:'A Balanced Diet',t:'Challenge',sub:'food',g:'Eat everything that can be eaten.',s:[
+ 'Work through the food checklist below.','Some foods are risky (poisonous potato, pufferfish, rotten flesh, spider eye). Eat them at full health with milk ready.','Chorus fruit teleports you, so eat it somewhere safe.']},
+{c:'Husbandry',n:'Serious Dedication',t:'Challenge',g:'Use a netherite ingot to upgrade a hoe.',s:[
+ 'Get a diamond hoe and a netherite ingot.','Use a netherite upgrade template at a smithing table to upgrade the hoe.','Take the netherite hoe out.']},
+{c:'Husbandry',n:'The Whole Pack',t:'Challenge',sub:'dogs',g:'Tame every wolf variant.',s:[
+ 'Each wolf variant lives in a different biome. See the checklist below.','Tame them with bones.','Rare variants spawn in small groups, so check the listed biomes carefully.']},
+];
+
+// Sub-checklists from the spreadsheet: [item, type, where/how]
+const SUBS = {
+ food: { title: 'Foods eaten', cols: ['Food', 'Type'], items: [['Apple','Crop'],['Baked Potato','Crop'],['Beetroot','Crop'],['Beetroot Soup','Crafted'],['Bread','Crafted'],['Carrot','Crop'],['Chorus Fruit','Misc'],['Cooked Chicken','Meat'],['Cooked Cod','Fish'],['Cooked Mutton','Meat'],['Cooked Porkchop','Meat'],['Cooked Rabbit','Meat'],['Cooked Salmon','Fish'],['Cookie','Crafted'],['Dried Kelp','Misc'],['Enchanted Golden Apple','Misc'],['Glow Berries','Crop'],['Golden Apple','Crafted'],['Golden Carrot','Crafted'],['Honey Bottle','Misc'],['Melon Slice','Crop'],['Mushroom Stew','Crafted'],['Poisonous Potato','Crop'],['Potato','Crop'],['Pufferfish','Fish'],['Pumpkin Pie','Crafted'],['Rabbit Stew','Crafted'],['Raw Beef','Meat'],['Raw Chicken','Meat'],['Raw Cod','Fish'],['Raw Mutton','Meat'],['Raw Porkchop','Meat'],['Raw Rabbit','Meat'],['Raw Salmon','Fish'],['Rotten Flesh','Misc'],['Spider Eye','Misc'],['Steak','Meat'],['Suspicious Stew','Crafted'],['Sweet Berries','Crop'],['Tropical Fish','Fish']] },
+ monsters: { title: 'Monsters killed', cols: ['Monster', 'Where'], items: [['Blaze','Nether'],['Bogged','Overworld'],['Breeze','Overworld'],['Camel Husk','Overworld'],['Cave Spider','Overworld'],['Creaking','Overworld'],['Creeper','Overworld'],['Drowned','Overworld'],['Elder Guardian','Overworld'],['Ender Dragon','End'],['Enderman','End'],['Endermite','End'],['Evoker','Raid'],['Ghast','Nether'],['Guardian','Overworld'],['Hoglin','Nether'],['Husk','Overworld'],['Magma Cube','Nether'],['Parched','Overworld'],['Phantom','Overworld'],['Piglin','Nether'],['Piglin Brute','Nether'],['Pillager','Raid'],['Ravager','Raid'],['Shulker','End'],['Silverfish','Overworld'],['Skeleton','Overworld'],['Slime','Overworld'],['Spider','Overworld'],['Stray','Overworld'],['Vex','Raid'],['Vindicator','Raid'],['Witch','Overworld'],['Wither','Overworld'],['Wither Skeleton','Nether'],['Zoglin','Nether'],['Zombie','Overworld'],['Zombie Horse','Overworld'],['Zombie Nautilus','Overworld'],['Zombie Villager','Overworld'],['Zombified Piglin','Nether']] },
+ templates: { title: 'Trims applied', cols: ['Trim', 'Found in'], items: [['Spire','End city'],['Snout','Bastion remnant'],['Rib','Nether fortress'],['Ward','Ancient city'],['Silence','Ancient city'],['Vex','Woodland mansion'],['Tide','Ocean monument (elder guardian drop)'],['Wayfinder','Trail ruins (suspicious gravel)']] },
+ biomes: { title: 'Biomes visited', cols: ['Biome', 'Type'], items: [['Badlands','Dry'],['Bamboo Jungle','Forest'],['Beach','Wetland'],['Birch Forest','Forest'],['Cherry Grove','Mountain'],['Cold Ocean','Ocean'],['Dark Forest','Forest'],['Deep Cold Ocean','Ocean'],['Deep Dark','Cave'],['Deep Frozen Ocean','Ocean'],['Deep Lukewarm Ocean','Ocean'],['Deep Ocean','Ocean'],['Desert','Dry'],['Dripstone Caves','Cave'],['Eroded Badlands','Dry'],['Flower Forest','Forest'],['Forest','Forest'],['Frozen Ocean','Ocean'],['Frozen Peaks','Mountain'],['Frozen River','Snowy'],['Grove','Mountain'],['Ice Spikes','Snowy'],['Jagged Peaks','Mountain'],['Jungle','Forest'],['Lukewarm Ocean','Ocean'],['Lush Caves','Cave'],['Mangrove Swamp','Wetland'],['Meadow','Mountain'],['Mushroom Fields','Other'],['Ocean','Ocean'],['Old Growth Birch Forest','Forest'],['Old Growth Pine Taiga','Forest'],['Old Growth Spruce Taiga','Forest'],['Pale Garden','Forest'],['Plains','Other'],['River','Wetland'],['Savanna','Dry'],['Savanna Plateau','Dry'],['Snowy Beach','Snowy'],['Snowy Plains','Snowy'],['Snowy Slopes','Mountain'],['Snowy Taiga','Snowy'],['Sparse Jungle','Forest'],['Stony Peaks','Mountain'],['Stony Shore','Wetland'],['Sulfur Caves','Cave'],['Sunflower Plains','Other'],['Swamp','Wetland'],['Taiga','Forest'],['Warm Ocean','Ocean'],['Windswept Forest','Mountain'],['Windswept Gravelly Hills','Mountain'],['Windswept Hills','Mountain'],['Windswept Savanna','Dry'],['Wooded Badlands','Dry']] },
+ dogs: { title: 'Wolves tamed', cols: ['Variant', 'Where to find'], items: [['Pale','Taiga'],['Ashen','Snowy Taiga'],['Snowy','Grove'],['Black','Old Growth Pine Taiga'],['Chestnut','Old Growth Spruce Taiga'],['Woods','Forest'],['Rusty','Sparse Jungle'],['Spotted','Savanna Plateau'],['Striped','Wooded Badlands']] },
+ cats: { title: 'Cats tamed', cols: ['Variant', 'Where to find'], items: [['Tabby','Villages'],['Tuxedo','Villages'],['Red','Villages'],['Siamese','Villages'],['British Shorthair','Villages'],['Calico','Villages'],['Persian','Villages'],['Ragdoll','Villages'],['White','Villages'],['Jellie','Villages'],['All Black','Swamp huts']] },
+ nether: { title: 'Nether biomes visited', cols: ['Biome', 'Tip'], items: [['Nether Wastes','Most common, red netherrack'],['Crimson Forest','Red fungus trees, hoglins'],['Warped Forest','Blue fungus trees, endermen'],['Soul Sand Valley','Soul sand, skeletons, ghasts'],['Basalt Deltas','Grey basalt, magma cubes']] },
+ frogs: { title: 'Frogs on a lead', cols: ['Frog', 'Raise the tadpole in'], items: [['Temperate (orange)','Swamp, plains, most biomes'],['Warm (white)','Desert, jungle, badlands, savanna'],['Cold (green)','Snowy biomes, frozen peaks']] },
+ froglights: { title: 'Froglights collected', cols: ['Froglight', 'Made by'], items: [['Ochre Froglight','Temperate frog'],['Pearlescent Froglight','Warm frog'],['Verdant Froglight','Cold frog']] },
+ breeding: { title: 'Animals bred', cols: ['Animal', 'Breed with'], items: [['Armadillo','Spider Eye'],['Axolotl','Bucket of Tropical Fish'],['Bee','Flowers'],['Camel','Cactus'],['Cat','Raw Cod/Salmon'],['Chicken','Seeds'],['Cow','Wheat'],['Donkey','Golden Apple/Carrot'],['Fox','Sweet/Glow Berries'],['Frog','Slimeball'],['Goat','Wheat'],['Hoglin','Crimson Fungus'],['Horse','Golden Apple/Carrot'],['Llama','Hay Bale'],['Mooshroom','Wheat'],['Mule','Horse + Donkey'],['Nautilus','Pufferfish/Tropical Fish'],['Ocelot','Raw Cod/Salmon'],['Panda','Bamboo'],['Pig','Carrot/Potato/Beetroot'],['Rabbit','Carrot/Dandelion'],['Sheep','Wheat'],['Sniffer','Torchflower Seeds'],['Strider','Warped Fungus'],['Turtle','Seagrass'],['Wolf','Any Meat (tamed)']] },
+};
+
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const CATS = ['Story', 'Nether', 'The End', 'Adventure', 'Husbandry'];
+const CAT_COLOR = { Story: '#5f9a4e', Nether: '#b3261e', 'The End': '#8e78b8', Adventure: '#c9772f', Husbandry: '#c9a227' };
+const keyOf = a => a.c + '|' + a.n;
+
+// ---------- saved progress ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('adv.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('adv.' + k, JSON.stringify(v)); } catch {} },
+};
+let done = new Set(store.get('done', []));
+let subDone = store.get('sub', {}); // { subKey: [item names] }
+const saveDone = () => store.set('done', [...done]);
+const saveSub = () => store.set('sub', subDone);
+const subSet = k => new Set(subDone[k] || []);
+
+let cat = store.get('cat', 'All'), q = '', type = '', hideDone = store.get('hideDone', false);
+let pinned = null; // advancement shown in the guide panel
+const openSubs = new Set(store.get('openSubs', []));
+
+// ---------- rendering ----------
+function matches(a) {
+  if (cat !== 'All' && a.c !== cat) return false;
+  if (type && a.t !== type) return false;
+  if (hideDone && done.has(keyOf(a))) return false;
+  if (q) { const s = (a.n + ' ' + a.g).toLowerCase(); if (!q.split(/\s+/).every(w => s.includes(w))) return false; }
+  return true;
+}
+
+function renderTabs() {
+  const el = $('catTabs'); el.innerHTML = '';
+  for (const c of ['All', ...CATS]) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.role = 'tab'; b.setAttribute('aria-selected', c === cat);
+    const list = c === 'All' ? ADV : ADV.filter(a => a.c === c);
+    const n = list.filter(a => done.has(keyOf(a))).length;
+    b.innerHTML = `${c !== 'All' ? `<i style="background:${CAT_COLOR[c]}"></i>` : ''}${c}<small>${n}/${list.length}</small>`;
+    b.onclick = () => { cat = c; store.set('cat', cat); render(); };
+    el.appendChild(b);
+  }
+}
+
+function renderProgress() {
+  const n = ADV.filter(a => done.has(keyOf(a))).length;
+  $('doneCount').textContent = n; $('totalCount').textContent = ADV.length;
+  $('overallBar').style.width = (n / ADV.length * 100) + '%';
+}
+
+function renderList() {
+  const el = $('list'); el.innerHTML = '';
+  const items = ADV.filter(matches);
+  if (!items.length) { el.innerHTML = '<div class="none">Nothing matches. Clear the search or show completed advancements.</div>'; return; }
+  let lastCat = null;
+  for (const a of items) {
+    // on phones, one ad between the first and second category
+    if (cat === 'All' && a.c !== lastCat && lastCat === 'Story') {
+      const ad = document.createElement('div'); ad.className = 'list-ad';
+      ad.innerHTML = '<div class="ad-slot ad-leader" data-ad-slot="checklist-list"><span class="ad-label">Advertisement</span><div class="ad-box">Ad space · 320 × 100</div></div>'; el.appendChild(ad.firstChild); el.lastChild.classList.add('list-ad');
+    }
+    if (cat === 'All' && a.c !== lastCat) {
+      const h = document.createElement('h2'); h.className = 'cat-head'; h.innerHTML = `<i style="background:${CAT_COLOR[a.c]}"></i>${a.c}`;
+      el.appendChild(h); lastCat = a.c;
+    }
+    const k = keyOf(a), isDone = done.has(k);
+    const row = document.createElement('div'); row.className = 'row' + (isDone ? ' done' : '') + (pinned === a ? ' active' : ''); row.role = 'listitem';
+    row.dataset.k = k;
+    const subInfo = a.sub ? (() => { const s = subSet(a.sub), t = SUBS[a.sub].items.length; return `<button type="button" class="sub-btn" aria-expanded="${openSubs.has(a.sub)}" aria-label="Show ${esc(SUBS[a.sub].title.toLowerCase())} checklist"><span class="subcount">${s.size}/${t}</span><span class="chev" aria-hidden="true">▾</span></button>`; })() : '';
+    const id = 'cb_' + ADV.indexOf(a);
+    row.innerHTML = `<input type="checkbox" id="${id}" ${isDone ? 'checked' : ''} aria-label="Completed: ${a.n.replace(/"/g, '&quot;')}">
+      <span class="info">
+        <span class="nm">${esc(a.n)}</span>
+        <span class="goal">${esc(a.g)}</span>
+      </span>
+      <span class="meta">${subInfo}<span class="type t-${a.t.toLowerCase()}">${a.t}</span><button type="button" class="guide-btn" aria-label="Show guide for ${esc(a.n)}" aria-expanded="${pinned === a}">Guide</button></span>`;
+    const cb = row.querySelector('input');
+    cb.addEventListener('change', e => { toggleDone(a, e.target.checked); });
+    // clicking anywhere on the row ticks it; the Guide button (phones) opens the guide instead
+    row.addEventListener('click', e => {
+      if (e.target === cb) return;
+      if (e.target.closest('.guide-btn')) { toggleInline(a, row); return; }
+      if (e.target.closest('.sub-btn')) { toggleSubInline(a, row); return; }
+      cb.checked = !cb.checked; toggleDone(a, cb.checked);
+      if (canHover()) showGuide(a, true);
+    });
+    row.addEventListener('mouseenter', () => { if (canHover()) showGuide(a); });
+    el.appendChild(row);
+    if (a.sub && openSubs.has(a.sub)) row.after(subPanel(a, 'i'));
+    if (!canHover() && pinned === a) row.after(guideEl(a, true));
+  }
+}
+
+// ---------- sub-checklists inside a row ----------
+function subPanel(a, ctx) {
+  const wrap = document.createElement('div'); wrap.className = 'sub-inline'; wrap.dataset.for = a.sub;
+  wrap.innerHTML = subHTML(a, ctx);
+  bindSub(wrap, a); return wrap;
+}
+function toggleSubInline(a, row) {
+  const btn = row.querySelector('.sub-btn');
+  const existing = document.querySelector(`.sub-inline[data-for="${a.sub}"]`);
+  if (existing) { existing.remove(); openSubs.delete(a.sub); btn.setAttribute('aria-expanded', 'false'); }
+  else { row.after(subPanel(a, 'i')); openSubs.add(a.sub); btn.setAttribute('aria-expanded', 'true'); }
+  store.set('openSubs', [...openSubs]);
+}
+
+const canHover = () => matchMedia('(hover: hover) and (min-width: 901px)').matches;
+
+function toggleDone(a, val) {
+  const k = keyOf(a);
+  if (val) done.add(k); else done.delete(k);
+  saveDone(); renderTabs(); renderProgress();
+  const row = document.querySelector(`.row[data-k="${CSS.escape(k)}"]`);
+  if (row) {
+    row.classList.toggle('done', val);
+    // a short green sweep and bounce when ticked
+    row.classList.remove('just-done');
+    if (val) { void row.offsetWidth; row.classList.add('just-done'); setTimeout(() => row.classList.remove('just-done'), 700); }
+  }
+  if (pinned === a) showGuide(a, true);
+  if (hideDone && val) setTimeout(renderList, 350);
+}
+
+// ---------- guide ----------
+function guideEl(a, inline) {
+  const wrap = document.createElement('div'); wrap.className = inline ? 'guide-inline' : 'guide-card';
+  const isDone = done.has(keyOf(a));
+  wrap.innerHTML = `
+    ${inline ? '' : `<div class="g-cat"><i style="background:${CAT_COLOR[a.c]}"></i>${a.c} · <span class="type t-${a.t.toLowerCase()}">${a.t}</span></div><h3>${esc(a.n)}</h3>`}
+    <p class="g-goal">${esc(a.g)}</p>
+    <ol class="steps">${a.s.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
+    ${a.sub ? subHTML(a, inline ? 'm' : 'g') : ''}
+    ${inline ? '' : `<label class="check done-toggle"><input type="checkbox" data-done ${isDone ? 'checked' : ''}> I’ve earned this advancement</label>`}`;
+  const dt = wrap.querySelector('[data-done]');
+  if (dt) dt.addEventListener('change', e => { toggleDone(a, e.target.checked); const cb = document.querySelector(`.row[data-k="${CSS.escape(keyOf(a))}"] input`); if (cb) cb.checked = e.target.checked; });
+  if (a.sub) bindSub(wrap, a);
+  return wrap;
+}
+function bindSub(wrap, a) {
+  wrap.querySelectorAll('[data-sub]').forEach(cb => cb.addEventListener('change', e => {
+    const s = subSet(a.sub); if (e.target.checked) s.add(cb.dataset.sub); else s.delete(cb.dataset.sub);
+    subDone[a.sub] = [...s]; saveSub(); syncSub(a);
+    if (s.size === SUBS[a.sub].items.length && !done.has(keyOf(a))) toggleDone(a, true);
+  }));
+  wrap.querySelectorAll('[data-subfilter]').forEach(b => b.addEventListener('click', () => {
+    const on = b.getAttribute('aria-pressed') !== 'true';
+    b.setAttribute('aria-pressed', on); b.textContent = on ? 'Show all' : 'Hide done';
+    b.closest('.sub').querySelector('.sub-list').classList.toggle('hide-done', on);
+  }));
+}
+// keep every open copy of a sub-checklist (row panel, guide panel) and the row's count in step
+function syncSub(a) {
+  const s = subSet(a.sub), total = SUBS[a.sub].items.length;
+  document.querySelectorAll(`.sub[data-key="${a.sub}"]`).forEach(box => {
+    box.querySelector('.sub-count').textContent = `${s.size}/${total}`;
+    box.querySelector('.sub-bar u').style.width = (s.size / total * 100) + '%';
+    box.querySelectorAll('[data-sub]').forEach(cb => { cb.checked = s.has(cb.dataset.sub); cb.closest('.sub-item').classList.toggle('got', cb.checked); });
+  });
+  const rc = document.querySelector(`.row[data-k="${CSS.escape(keyOf(a))}"] .subcount`); if (rc) rc.textContent = `${s.size}/${total}`;
+}
+function subHTML(a, ctx = 'g') {
+  const S = SUBS[a.sub], s = subSet(a.sub);
+  const rows = S.items.map(([name, info], i) => {
+    const id = `sub_${ctx}_${a.sub}_${i}`;
+    return `<label class="sub-item${s.has(name) ? ' got' : ''}" for="${id}"><input type="checkbox" id="${id}" data-sub="${esc(name)}" ${s.has(name) ? 'checked' : ''}><span>${esc(name)}</span></label>`;
+  }).join('');
+  return `<div class="sub" data-key="${a.sub}"><div class="sub-head"><b>${S.title}</b><span class="sub-count">${s.size}/${S.items.length}</span><button type="button" class="link" data-subfilter aria-pressed="false">Hide done</button></div>
+    <div class="sub-bar"><u style="width:${s.size / S.items.length * 100}%"></u></div>
+    <div class="sub-list">${rows}</div></div>`;
+}
+document.addEventListener('change', e => { const l = e.target.closest && e.target.closest('.sub-item'); if (l) l.classList.toggle('got', e.target.checked); });
+
+function showGuide(a, pin) {
+  if (!pin && pinned && pinned !== a && document.querySelector('.guide').matches(':hover')) return;
+  pinned = a;
+  document.querySelectorAll('.row.active').forEach(r => r.classList.remove('active'));
+  const row = document.querySelector(`.row[data-k="${CSS.escape(keyOf(a))}"]`); if (row) row.classList.add('active');
+  const inner = $('guideInner'); inner.innerHTML = ''; inner.appendChild(guideEl(a, false));
+}
+function toggleInline(a, row) {
+  const open = row.nextElementSibling && row.nextElementSibling.classList.contains('guide-inline');
+  document.querySelectorAll('.guide-inline').forEach(n => n.remove());
+  document.querySelectorAll('.row.active').forEach(r => { r.classList.remove('active'); r.querySelector('.guide-btn').setAttribute('aria-expanded', 'false'); });
+  if (open && pinned === a) { pinned = null; return; }
+  pinned = a; row.classList.add('active'); row.querySelector('.guide-btn').setAttribute('aria-expanded', 'true');
+  row.after(guideEl(a, true));
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function render() { renderTabs(); renderProgress(); renderList(); }
+
+// ---------- controls ----------
+$('search').addEventListener('input', e => { q = e.target.value.trim().toLowerCase(); renderList(); });
+$('typeFilter').addEventListener('change', e => { type = e.target.value; renderList(); });
+$('hideDone').checked = hideDone;
+$('hideDone').addEventListener('change', e => { hideDone = e.target.checked; store.set('hideDone', hideDone); renderList(); });
+$('resetBtn').onclick = () => { $('resetConfirm').hidden = false; $('resetBtn').hidden = true; };
+$('resetNo').onclick = () => { $('resetConfirm').hidden = true; $('resetBtn').hidden = false; };
+$('resetYes').onclick = () => { done = new Set(); subDone = {}; saveDone(); saveSub(); $('resetConfirm').hidden = true; $('resetBtn').hidden = false; pinned = null; $('guideInner').innerHTML = '<div class="placeholder">Hover over an advancement to see how to get it.</div>'; render(); };
+let wasHover = canHover();
+addEventListener('resize', () => { const h = canHover(); if (h !== wasHover) { wasHover = h; renderList(); if (h && pinned) showGuide(pinned, true); } });
+
+render();
+// open the first unfinished advancement in the guide panel so the page starts with a guide visible
+if (canHover()) { const first = ADV.find(a => !done.has(keyOf(a))) || ADV[0]; showGuide(first, true); }
+
+// share card
+$('shareBtn').onclick = () => window.openShareCard({
+  title: 'Advancements', subtitle: 'Minecraft advancement progress',
+  done: ADV.filter(a => done.has(keyOf(a))).length, total: ADV.length,
+  rows: CATS.map(c => { const l = ADV.filter(a => a.c === c); return [c, l.filter(a => done.has(keyOf(a))).length, l.length, CAT_COLOR[c]]; }),
+});
+
+// ---------- checklist switcher: Advancements, Blocks, Mobs ----------
+{
+  const LISTS = [['Advancements', null, 126, '126 to earn · step-by-step guides'], ['Blocks', 'blocks', 937, '937 to collect · 17 categories'], ['Mobs', 'mobs', 88, '88 to collect · 4 categories']];
+  const modal = document.getElementById('chooser'), el = document.getElementById('choices');
+  const count = k => { try { return (JSON.parse(localStorage.getItem(k) || '[]') || []).length; } catch { return 0; } };
+  const close = () => { modal.hidden = true; document.body.classList.remove('modal-open'); };
+  document.getElementById('switchBtn').onclick = () => {
+    el.innerHTML = '';
+    for (const [name, key, total, meta] of LISTS) {
+      const got = key ? count('col.done.' + key) : done.size;
+      const a = document.createElement(key ? 'a' : 'button');
+      a.className = 'choice' + (key ? '' : ' current');
+      if (key) a.href = '../collector/index.html#' + key; else { a.type = 'button'; a.onclick = close; }
+      a.innerHTML = `<span class="c-name">${name}</span><span class="c-meta">${meta}</span><span class="c-bar"><u style="width:${got / total * 100}%"></u></span><span class="c-count">${got}/${total}</span>`;
+      el.appendChild(a);
+    }
+    modal.hidden = false; document.body.classList.add('modal-open');
+    setTimeout(() => el.querySelector('.current').focus(), 0);
+  };
+  document.getElementById('chooserClose').onclick = close;
+  document.addEventListener('click', e => { const a = e.target.closest('a[href$="#choose"]'); if (a) { e.preventDefault(); a.closest('details')?.removeAttribute('open'); document.getElementById('switchBtn').click(); } });
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) close(); });
+}
+})();
+</script>
+<script src="../lib/scene.js"></script>
+</body>
+</html>

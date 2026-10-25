@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Seed Map · Chunk Hub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@900&family=Carlito:wght@400;700&display=swap">
+<style>
+/* Layout: full-bleed map canvas; a docked survey panel on the left (bottom sheet on phones); a readout strip along the map's bottom edge. */
+:root {
+  --bg: #e9ecef;
+  --panel: #f7f8f9;
+  --panel-2: #eef1f3;
+  --line: #d3d9de;
+  --fg: #1b2228;
+  --muted: #5d6973;
+  --accent: #b3261e;      /* redstone */
+  --accent-fg: #ffffff;
+  --ok: #2f7d4f;
+  --chip: #ffffff;
+  --shadow: 0 1px 2px rgba(20,30,40,.08), 0 6px 24px rgba(20,30,40,.10);
+  --f-display: "CH Display", "Franklin Gothic Heavy", "Libre Franklin", "Arial Black", sans-serif;
+  --f-body: Calibri, "Carlito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: Calibri, "Carlito", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1418; --panel: #161c21; --panel-2: #1d252b; --line: #2b353d; --fg: #e3e8ec; --muted: #8d9aa4;
+  --accent: #e2574c; --accent-fg: #1a0705; --ok: #5cc287; --chip: #1f282f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1418; --panel: #161c21; --panel-2: #1d252b; --line: #2b353d; --fg: #e3e8ec; --muted: #8d9aa4;
+  --accent: #e2574c; --accent-fg: #1a0705; --ok: #5cc287; --chip: #1f282f; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark; }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; overflow: hidden; }
+* { box-sizing: border-box; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-columns: 320px 1fr; height: 100%; }
+.panel { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; z-index: 3; }
+.panel-scroll { overflow-y: auto; padding-block: 18px 24px; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: 18px; display: flex; flex-direction: column; gap: 20px; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.brand h1 { font-family: var(--f-display); font-weight: 900; font-size: 20px; letter-spacing: .02em; margin: 0; line-height: 1; }
+.brand h1 span { color: var(--accent); }
+.brand small { color: var(--muted); font-size: 12px; }
+
+.group { display: flex; flex-direction: column; gap: 8px; }
+.label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+.label button { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12px; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; }
+
+.seed-row { display: flex; gap: 6px; }
+.field { background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; min-width: 0; }
+.field.mono { font-family: var(--f-mono); font-size: 13px; }
+.btn { background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+.hint { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0; }
+.hint code { font-family: var(--f-mono); font-size: 11.5px; }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 2px; gap: 2px; }
+.seg button { border: 0; background: none; border-radius: 5px; padding: 6px 4px; cursor: pointer; color: var(--muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--chip); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.check { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.check input { accent-color: var(--accent); margin: 0; }
+
+.layers { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+.layer { display: flex; align-items: center; gap: 8px; padding: 4px 2px; cursor: pointer; border-radius: 4px; user-select: none; min-width: 0; }
+.layer input { accent-color: var(--accent); margin: 0; flex: none; }
+.layer .sw { width: 14px; height: 14px; border-radius: 4px; flex: none; display: grid; place-items: center; font: 600 9px/1 var(--f-mono); color: #fff; }
+.ico { width: 22px; height: 22px; image-rendering: pixelated; flex: none; margin: -2px 0; }
+.ico.lg { width: 44px; height: 44px; margin: -8px 0; }
+.layer span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer.off { opacity: .4; cursor: not-allowed; }
+.note { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.note b { color: var(--fg); font-weight: 600; }
+
+.mapwrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #2a3138; touch-action: none; }
+canvas#map { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; image-rendering: pixelated; }
+canvas#map.drag { cursor: grabbing; }
+
+.zoom { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+.zoom button { width: 36px; height: 36px; border: 0; background: none; cursor: pointer; font-size: 18px; line-height: 1; }
+.zoom button + button { border-top: 1px solid var(--line); }
+.zoom button:hover { background: var(--panel-2); }
+
+.readout { position: absolute; left: 12px; right: 60px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; font-family: var(--f-mono); font-size: 12px; box-shadow: var(--shadow); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chip .k { color: var(--muted); margin-right: 4px; }
+.chip .bsw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; border: 1px solid rgba(0,0,0,.25); }
+
+.status { position: absolute; left: 50%; top: calc(12px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 12px; box-shadow: var(--shadow); color: var(--muted); white-space: nowrap; }
+
+.pop { position: absolute; z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 10px 12px; min-width: 200px; max-width: 260px; display: flex; flex-direction: column; gap: 6px; }
+.pop h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.pop .coords { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.pop .acts { display: flex; gap: 6px; }
+.pop .acts .btn { padding: 5px 8px; font-size: 12px; }
+.pop .x { position: absolute; top: 6px; right: 6px; border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 16px; }
+
+.sheet-toggle { display: none; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .mapwrap { grid-row: 1; }
+  .panel { grid-row: 2; border-right: 0; border-top: 1px solid var(--line); max-height: 46vh; }
+  .panel.collapsed .panel-scroll > :not(.brand) { display: none; }
+  .panel-scroll { padding-block: 12px 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 16px; }
+  .sheet-toggle { display: inline-block; }
+  .readout { right: 12px; }
+  .readout .chip.opt { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.site-head { height: var(--head-h); flex: none; display: flex; align-items: center; gap: 18px; background: var(--panel); border-bottom: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); position: relative; z-index: 6; }
+.site-head .home { font-family: var(--f-display); font-size: 15px; color: var(--fg); text-decoration: none; white-space: nowrap; }
+.site-head .home span { color: var(--accent); }
+.site-head nav { display: flex; gap: 4px; min-width: 0; overflow-x: auto; }
+.site-head nav a { color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 6px; white-space: nowrap; font-weight: 600; }
+.site-head nav a:hover { color: var(--fg); background: var(--panel-2); }
+.site-head nav a[aria-current="page"] { color: var(--fg); background: var(--panel-2); }
+body { display: flex; flex-direction: column; }
+.app { height: auto !important; flex: 1; min-height: 0; }
+
+/* Ad slots: fixed-size boxes so pages don't jump when an ad loads. Replace the placeholder inside with the ad network's code. */
+.ad-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-inline: auto; }
+.ad-slot .ad-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ad-slot .ad-box { width: 100%; display: grid; place-items: center; background: var(--panel-2); border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; overflow: hidden; }
+.ad-rect .ad-box { width: 300px; max-width: 100%; height: 250px; }
+.ad-leader { width: 100%; max-width: 728px; }
+.ad-leader .ad-box { height: 90px; }
+@media (max-width: 760px) { .ad-leader .ad-box { height: 100px; max-width: 320px; } .ad-leader { max-width: 320px; } }
+
+.app { grid-template-columns: 336px 1fr; }
+@media (max-width: 760px) { .app { grid-template-columns: 1fr; } }
+.panel .ad-slot { margin-top: 4px; }
+
+.site-head { gap: 14px; }
+.more { position: relative; flex: none; }
+.more summary { list-style: none; cursor: pointer; color: var(--muted); padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; white-space: nowrap; user-select: none; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary:hover, .more[open] summary, .more.current summary { color: var(--fg); background: var(--panel-2); }
+.more .menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; z-index: 40; }
+.more .menu a { color: var(--fg); text-decoration: none; padding: 8px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; }
+.more .menu a:hover, .more .menu a[aria-current="page"] { background: var(--panel-2); }
+@media (max-width: 760px) { .site-head nav, .site-head .more.lists { display: none; } .more .menu a.primary { display: block; } }
+.more .menu a.primary { display: none; }
+@media (max-width: 760px) { .more .menu a.primary { display: block; } .more .menu .sep { display: block; } }
+.more .menu .sep { display: none; height: 1px; background: var(--line); margin: 4px 6px; }
+/* Floating pill header: dark glass bar with logo, tool links, a Tools menu and a button on the right. */
+:root { --head-h: 72px; }
+.site-head { height: 56px; width: min(1240px, calc(100% - 24px)); margin: 8px auto; padding: 0 8px 0 20px; gap: 4px; border-radius: 999px;
+  background: rgba(16,16,18,.86); border: 1px solid rgba(255,255,255,.09); border-bottom: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  position: sticky; top: 8px; z-index: 30; flex: none; color: #f4f4f5; font-family: var(--f-body); }
+.site-head .home { display: flex; align-items: center; gap: 9px; color: #fff; font-family: var(--f-body); font-weight: 700; font-size: 19px; letter-spacing: -.01em; margin-right: 16px; text-decoration: none; }
+.site-head .home span { color: #fff; }
+.site-head .logo { flex: none; }
+.site-head nav { display: flex; gap: 2px; }
+.site-head nav a, .site-head .more summary { color: #a1a1aa; background: none; font-weight: 500; font-size: 15px; line-height: 22px; padding: 8px 14px; border-radius: 999px; transition: color .15s, background-color .15s; }
+.site-head nav a:hover, .site-head .more summary:hover, .site-head .more[open] summary { color: #fff; background: rgba(255,255,255,.06); }
+.site-head nav a[aria-current="page"], .site-head .more.current summary { color: #fff; background: none; }
+.site-head .more summary { display: flex; align-items: center; gap: 5px; position: relative; }
+.site-head .more .chev { transition: transform .15s; }
+.site-head .more[open] .chev { transform: rotate(180deg); }
+.site-head .more .dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; margin-left: 3px; box-shadow: 0 0 8px rgba(255,59,48,.7); }
+.site-head .more .menu { left: 0; right: auto; top: calc(100% + 12px); min-width: 200px; background: #141416; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.45); padding: 6px; }
+.site-head .more .menu a { color: #d4d4d8; font-weight: 500; border-radius: 9px; }
+.site-head .more .menu a:hover, .site-head .more .menu a[aria-current="page"] { color: #fff; background: rgba(255,255,255,.07); }
+.site-head .more .menu .sep { background: rgba(255,255,255,.09); }
+.site-head .cta { margin-left: auto; display: flex; align-items: center; gap: 8px; color: #e4e4e7; text-decoration: none; font-weight: 600; font-size: 15px; padding: 9px 16px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.04); white-space: nowrap; transition: background-color .15s, border-color .15s; }
+.site-head .cta:hover, .site-head .cta[aria-current="page"] { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); color: #fff; }
+.site-head :focus-visible { outline: 2px solid #ff3b30; outline-offset: 2px; }
+@media (max-width: 760px) { .site-head nav, .site-head .more.lists { display: none; } .site-head { padding-left: 16px; } .site-head .home { font-size: 17px; margin-right: 4px; } .site-head .more .menu { left: auto; right: -90px; } }
+@media (max-width: 400px) { .site-head .cta span { display: none; } .site-head .cta { padding: 9px 11px; } }
+.site-head .cta { margin-right: 6px; }
+.site-head .account { position: relative; flex: none; margin-left: auto; }
+.site-head .signin { display: flex; align-items: center; gap: 10px; background: none; border: 0; color: #e4e4e7; font: inherit; font-weight: 500; font-size: 15px; padding: 4px 14px 4px 4px; border-radius: 999px; cursor: pointer; transition: background-color .15s; }
+.site-head .signin:hover, .site-head .signin[aria-expanded="true"] { background: rgba(255,255,255,.07); color: #fff; }
+.site-head .avatar { width: 36px; height: 36px; border-radius: 50%; background: #3f3f46; color: #8e8e96; display: grid; place-items: end center; overflow: hidden; flex: none; }
+.site-head .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.site-head .signin.in .avatar { place-items: center; }
+.site-head .signin.in .lbl { display: none; }
+.site-head .signin.in { padding: 4px; }
+.site-head .signin-pop { position: absolute; right: 0; top: calc(100% + 12px); width: 260px; background: #141416; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.45); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.45; color: #a1a1aa; z-index: 40; }
+.site-head .signin-pop[hidden] { display: none; }
+.site-head .signin-pop b { color: #fff; font-size: 15px; }
+@media (max-width: 760px) { .site-head .signin .lbl { display: none; } .site-head .signin { padding: 4px; } .site-head { padding-right: 6px; } }
+@media (max-width: 400px) { .site-head .home span { font-size: 16px; } .site-head .cta { margin-right: 2px; } }
+/* phones: Seed Map and Player Search stay in the bar; everything else moves into the menu (☰) next to the profile picture */
+.site-head .more.burger { display: none; }
+.site-head .more .menu .grp { display: block; padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8e8e96; }
+@media (max-width: 760px) {
+  .site-head { padding: 0 6px 0 14px; gap: 2px; }
+  .site-head nav:not(.after) { display: flex; }
+  .site-head nav:not(.after) a { padding: 8px 9px; font-size: 14px; }
+  .site-head .more.toolmenu, .site-head .more.lists, .site-head nav.after { display: none; }
+  .site-head .home { margin-right: 6px; }
+  .site-head .home span { display: none; }
+  .site-head .more.burger { display: block; }
+  .site-head nav a.k-stats { display: none; }
+  .site-head .more.burger summary { padding: 8px 10px; display: grid; place-items: center; }
+  .site-head .more.burger .menu { left: auto; right: 0; min-width: 230px; max-height: calc(100vh - 90px); overflow-y: auto; }
+  .site-head .more.burger { margin-left: auto; }
+  .site-head .account { margin-left: 2px; }
+  .site-head .more.burger .menu .sep { display: block; height: 1px; background: rgba(255,255,255,.12); margin: 6px 8px; }
+}
+@media (max-width: 340px) { .site-head nav:not(.after) a { padding: 8px 6px; font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .site-head nav a, .site-head .signin, .site-head .more summary, .site-head .cta, .site-head .more .chev { transition: none; } }
+.legal-links a { color: inherit; } .legal-links { white-space: nowrap; }
+
+/* Same world as the home page, fixed behind the tool pages: sky and clouds at the top, ground below.
+   Each page's content sits on a "sheet" so it stays easy to read. */
+html { background: #6f6f6f; }
+body { background: transparent !important; position: relative; }
+body:not(.map-page) { display: flow-root; }
+.scene { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.scene canvas { position: absolute; top: 0; left: 0; display: block; }
+#skyCv { width: 100%; background: #86c9e6; }
+#worldCv { image-rendering: pixelated; image-rendering: crisp-edges; transition: filter 1.5s linear; }
+main, .app { position: relative; z-index: 1; }
+.site-head { z-index: 30; background: rgba(14,20,28,.34); border-color: rgba(255,255,255,.22); box-shadow: 0 8px 28px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.12); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); }
+.site-head nav a, .site-head .more summary { color: rgba(255,255,255,.86); text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.site-head nav a:hover, .site-head .more summary:hover, .site-head .more[open] summary { color: #fff; background: rgba(255,255,255,.14); }
+.site-head .home, .site-head .signin { text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.site-head .signin:hover, .site-head .signin[aria-expanded="true"] { background: rgba(255,255,255,.14); }
+.site-head .avatar { background: rgba(255,255,255,.22); color: rgba(255,255,255,.75); }
+section.top[data-scene-hero] { padding-bottom: 72px; }
+section.top[data-scene-hero] h1 { color: #10202a; text-shadow: 0 2px 0 rgba(255,255,255,.35); transition: color 2s ease, text-shadow 2s ease; }
+section.top[data-scene-hero] h1 span { color: #b3261e; }
+section.top[data-scene-hero] .title p { color: #1f3c4a; transition: color 2s ease; }
+section.top[data-scene-hero].night h1 { color: #f2f5f8; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+section.top[data-scene-hero].night h1 span { color: #ff6b5f; }
+section.top[data-scene-hero].night .title p { color: #c8d4e6; }
+section.top[data-scene-hero] .overall { box-shadow: 0 2px 0 rgba(0,0,0,.2), 0 12px 30px rgba(0,0,0,.25); }
+.sheet { background: var(--bg); border-radius: 18px; padding: 24px 24px 4px; margin-bottom: 56px; box-shadow: 0 2px 0 rgba(0,0,0,.25), 0 18px 50px rgba(0,0,0,.35); }
+.sheet > footer { border-top-color: var(--line); }
+@media (max-width: 640px) { .sheet { padding: 16px 12px 2px; border-radius: 14px; margin-inline: -4px; } section.top[data-scene-hero] { padding-bottom: 60px; } }
+/* checklist pages: no sheet, the world shows through; loose text gets a shadow, the filter bar is glass */
+.sheet.clear { background: none; box-shadow: none; padding: 0; border-radius: 0; }
+.sheet.clear .controls { background: rgba(14,20,28,.42); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; top: calc(var(--head-h) + 6px); }
+.sheet.clear .controls .check, .sheet.clear .cat-head, .sheet.clear .cat-head small, .sheet.clear .none, .sheet.clear .ad-slot .ad-label { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+.sheet.clear > footer { background: rgba(12,14,16,.78); color: #d9dee2; border: 0; border-radius: 10px; padding: 16px 20px; margin-bottom: 8px; }
+.sheet.clear > footer .link { color: #d9dee2; }
+.sheet.clear .cat-head { width: fit-content; justify-self: start; background: rgba(12,14,16,.62); padding: 3px 10px; border-radius: 999px; }
+body.map-page .site-head { position: relative; top: 0; }
+body.map-page { margin: 0; }
+/* loose notes that sit straight on the world get light text; notes inside panels keep their normal colour */
+.sheet.clear .note2 { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.85); }
+.sheet.clear :is(.panel-box, .stat, .card, .tbl, .result, .dl, .acct, .row, .modal-card) .note2 { color: var(--muted); text-shadow: none; }
+/* other tool pages: a frosted-glass sheet, the world blurred behind it */
+.sheet.frost { background: color-mix(in srgb, var(--bg) 55%, transparent); -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1); border: 1px solid rgba(255,255,255,.35); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sheet.frost { background: color-mix(in srgb, var(--bg) 62%, transparent); border-color: rgba(255,255,255,.12); } }
+:root[data-theme="dark"] .sheet.frost { background: color-mix(in srgb, var(--bg) 62%, transparent); border-color: rgba(255,255,255,.12); }
+@font-face { font-family: "CH Display"; src: local("Franklin Gothic Heavy"), local("FranklinGothic-Heavy"), local("Franklin Gothic Demi"); font-weight: 900; font-style: normal; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 900; letter-spacing: 0; }
+</style>
+</head>
+<body class="map-page">
+<div class="scene" data-mode="fixed" data-amp="0" data-trees="none" aria-hidden="true"><canvas id="skyCv"></canvas><canvas id="worldCv"></canvas></div>
+
+
+<header class="site-head" data-scene-hero><a class="home" href="../index.html"><svg class="logo" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2.5 20.5 7.2 12 12 3.5 7.2z" fill="#ff3b30"/><path d="M3.5 7.2 12 12v9.5l-8.5-4.8z" fill="#f4f4f5"/><path d="M20.5 7.2 12 12v9.5l8.5-4.8z" fill="#a1a1aa"/></svg><span>Chunk Hub</span></a><nav aria-label="Main tools"><a class="k-seed" href="../seed-map/index.html" aria-current="page">Seed Map</a><a class="k-player" href="../player/index.html">Player Search</a><a class="k-stats" href="../world-stats/index.html">World Stats</a></nav><details class="more toolmenu"><summary>Tools <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu"><a class="primary" href="../seed-map/index.html" aria-current="page">Seed Map</a><a class="primary" href="../player/index.html">Player Search</a><a class="primary" href="../world-stats/index.html">World Stats</a><a class="primary" href="../advancements/index.html">All Advancements</a><a class="primary" href="../collector/index.html#blocks">All Blocks</a><a class="primary" href="../collector/index.html#mobs">All Mobs</a><a class="primary" href="../downloads/index.html">Downloads</a><span class="sep"></span><a href="../ore-finder/index.html">Ore Finder</a><a href="../seed-generator/index.html">Seed Generator</a><a href="../slime-chunks/index.html">Slime Chunks</a><a href="../portal-calculator/index.html">Portal Calculator</a><a href="../circle-generator/index.html">Circle Generator</a><a href="../enchanting/index.html">Enchanting Planner</a><a href="../brewing/index.html">Brewing Guide</a><a href="../pixel-art/index.html">Pixel Art Planner</a></div></details><details class="more lists"><summary>Checklists <svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="menu"><a href="../advancements/index.html">All Advancements</a><a href="../collector/index.html#blocks">All Blocks</a><a href="../collector/index.html#mobs">All Mobs</a></div></details><nav class="after" aria-label="Downloads"><a href="../downloads/index.html">Downloads</a></nav><details class="more burger"><summary aria-label="Menu"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></summary><div class="menu"><span class="grp">Tools</span><a href="../world-stats/index.html">World Stats</a><a href="../ore-finder/index.html">Ore Finder</a><a href="../seed-generator/index.html">Seed Generator</a><a href="../slime-chunks/index.html">Slime Chunks</a><a href="../portal-calculator/index.html">Portal Calculator</a><a href="../circle-generator/index.html">Circle Generator</a><a href="../enchanting/index.html">Enchanting Planner</a><a href="../brewing/index.html">Brewing Guide</a><a href="../pixel-art/index.html">Pixel Art Planner</a><span class="sep"></span><span class="grp">Checklists</span><a href="../advancements/index.html">All Advancements</a><a href="../collector/index.html#blocks">All Blocks</a><a href="../collector/index.html#mobs">All Mobs</a><span class="sep"></span><span class="grp">More</span><a href="../downloads/index.html">Downloads</a><a href="../account/index.html">My account</a></div></details><div class="account"><button type="button" class="signin" aria-haspopup="dialog" aria-expanded="false"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="9" r="4.2" fill="currentColor"/><path d="M3.5 21.5c1.4-4.3 4.6-6.4 8.5-6.4s7.1 2.1 8.5 6.4" fill="currentColor"/></svg></span><span class="lbl">Sign In</span></button><div class="signin-pop" role="dialog" aria-label="Accounts" hidden><b>Accounts are coming soon</b><span>You'll be able to sign in and keep your progress on every device. For now, progress is saved in this browser.</span></div><script defer src="../lib/account-config.js"></script><script defer src="../lib/supabase.js"></script><script defer src="../lib/account.js" data-root="../"></script></div><script>(function(){var h=document.currentScript.parentNode,d=h.querySelectorAll("details");d.forEach(function(x){x.addEventListener("toggle",function(){if(x.open)d.forEach(function(y){if(y!==x)y.open=false;});});});document.addEventListener("click",function(e){d.forEach(function(x){if(x.open&&!x.contains(e.target))x.open=false;});});document.addEventListener("keydown",function(e){if(e.key==="Escape")d.forEach(function(x){x.open=false;});});h.addEventListener("click",function(e){if(e.target.closest(".menu a"))d.forEach(function(x){x.open=false;});});})();</script></header>
+<div class="app">
+  <aside class="panel" id="panel">
+    <div class="panel-scroll">
+      <div class="brand">
+        <h1>Seed<span>Map</span></h1>
+        <button class="btn sheet-toggle" id="sheetToggle" aria-expanded="true">Hide</button>
+      </div>
+
+      <div class="group">
+        <label class="label" for="seed">Seed <button type="button" id="randomSeed">Random</button></label>
+        <div class="seed-row">
+          <input class="field mono" id="seed" autocomplete="off" spellcheck="false" placeholder="e.g. 8091867987493326313">
+          <button class="btn primary" id="go">Load</button>
+        </div>
+        <p class="hint" id="seedHint">Numbers are used as-is. Text seeds are hashed the same way the game does.</p>
+      </div>
+
+      <div class="group">
+        <div class="label">Edition</div>
+        <div class="seg" id="edition">
+          <button type="button" data-v="java" aria-pressed="true">Java</button>
+          <button type="button" data-v="bedrock" aria-pressed="false">Bedrock</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="label" for="version">Version</label>
+        <select class="field" id="version"></select>
+      </div>
+
+      <div class="group">
+        <div class="label">Dimension</div>
+        <div class="seg" id="dimension">
+          <button type="button" data-v="0" aria-pressed="true">Overworld</button>
+          <button type="button" data-v="-1" aria-pressed="false">Nether</button>
+          <button type="button" data-v="1" aria-pressed="false">End</button>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="group">
+          <label class="label" for="ylevel">Biome height</label>
+          <select class="field" id="ylevel">
+            <option value="320">Surface</option>
+            <option value="64">Y 64</option>
+            <option value="0">Y 0</option>
+            <option value="-40">Y −40 (caves)</option>
+          </select>
+        </div>
+        <div class="group">
+          <div class="label">World type</div>
+          <label class="check" style="padding-top:8px"><input type="checkbox" id="large"> Large biomes</label>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Map layers <button type="button" id="toggleAll">Hide all</button></div>
+        <div class="layers" id="layers"></div>
+        <div class="note" id="layerNote" hidden></div>
+      </div>
+
+      <div class="group">
+        <label class="label" for="gotoX">Go to block</label>
+        <div class="seed-row">
+          <input class="field mono" id="gotoX" inputmode="numeric" placeholder="X">
+          <input class="field mono" id="gotoZ" inputmode="numeric" placeholder="Z">
+          <button class="btn" id="gotoBtn">Go</button>
+        </div>
+      </div>
+
+      <p class="hint">Biome and structure positions are calculated in your browser with <a href="https://github.com/Cubitect/cubiomes" target="_blank" rel="noopener">cubiomes</a> (MIT licence). Structures marked on the map passed a biome check; a few may still fail in-game because of terrain.</p>
+      <p class="hint" style="font-size:11px">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</p>
+      <div class="ad-slot ad-rect" data-ad-slot="seed-panel"><span class="ad-label">Advertisement</span><div class="ad-box">Ad space · 300 × 250</div></div>
+    </div>
+  </aside>
+
+  <main class="mapwrap" id="mapwrap">
+    <canvas id="map"></canvas>
+    <div class="status" id="status">Loading generator…</div>
+    <div class="zoom">
+      <button type="button" id="zin" aria-label="Zoom in">+</button>
+      <button type="button" id="zout" aria-label="Zoom out">−</button>
+      <button type="button" id="home" aria-label="Centre on 0, 0" title="Centre on 0, 0" style="font-size:13px">⌂</button>
+    </div>
+    <div class="readout" id="readout">
+      <div class="chip"><span class="k">X</span><span id="rx">0</span> <span class="k" style="margin-left:6px">Z</span><span id="rz">0</span></div>
+      <div class="chip opt"><span class="k">Chunk</span><span id="rc">0, 0</span></div>
+      <div class="chip"><span class="bsw" id="rbsw"></span><span id="rb">—</span></div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ICONS:BEGIN */
+// Seed Map map icons: original 16x16 pixel art. '.' is transparent, 'k' is the outline
+// (drawn as a dark tone of the neighbouring colour). Edit a grid or palette to change an icon.
+const ICONS = {
+  village: { p: {"k": "#4a3208", "Y": "#e9b93a", "y": "#fff0a0", "O": "#7a4b1a"}, g: [
+    '................',
+    '.......kk.......',
+    '......kYYk......',
+    '.....kYyYYk.....',
+    '.....kYYYYk.....',
+    '....kYyYYYYk....',
+    '....kYyYYYYk....',
+    '....kYYYYYYk....',
+    '...kYyYYYYYYk...',
+    '...kYYYYYYYYk...',
+    '..kYYYYYYYYYYk..',
+    '..kkkkkkkkkkkk..',
+    '......kOOk......',
+    '.......kk.......',
+    '................',
+    '................',
+  ]},
+  desert_temple: { p: {"k": "#5a4020", "S": "#e3c27a", "s": "#c39a52", "d": "#3a2a1a"}, g: [
+    '................',
+    '................',
+    '.......kk.......',
+    '......kSSk......',
+    '.....kSSSSk.....',
+    '.....kSsSSk.....',
+    '....kSSSSSSk....',
+    '....kSSSSsSk....',
+    '...kSSSkkSSSk...',
+    '...kSsSkdkSSk...',
+    '..kSSSkddkSSSk..',
+    '..kSSSkddkSsSk..',
+    '.kSSsSkddkSSSSk.',
+    '.kSSSSkddkSSsSk.',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ]},
+  jungle_temple: { p: {"k": "#2f322e", "G": "#8c8f86", "M": "#5e8a3a", "v": "#3f7a2a", "d": "#1f2420", "s": "#6f726a"}, g: [
+    '................',
+    '..kkkkkkkkkkkk..',
+    '..kMMGGGMMGGGk..',
+    '..kMGGGGGMGGGk..',
+    '..kGGsGGGGGsGk..',
+    '..kGGGGkkGGGGk..',
+    '..kGvGkddkGvGk..',
+    '..kGvGkddkGvGk..',
+    '..kGvGGkkGGvGk..',
+    '..kGGGGGGGGvGk..',
+    '..kGsGGGGsGGGk..',
+    '..kGGGvGGGGGGk..',
+    '..kMGGvGGGGMGk..',
+    '..kkkkkkkkkkkk..',
+    '................',
+    '................',
+  ]},
+  swamp_hut: { p: {"k": "#16161c", "C": "#3a3a44", "c": "#6a6a78", "w": "#7fd34a", "g": "#a8f070"}, g: [
+    '................',
+    '................',
+    '................',
+    '....g..g...g....',
+    '...g..g..g......',
+    '..kkkkkkkkkkkk..',
+    '..kCwwwwwwwwCk..',
+    '..kkkkkkkkkkkk..',
+    '...kCCCCCCCCk...',
+    '..kCCcCCCCCCCk..',
+    '..kCcCCCCCCCCk..',
+    '..kCCCCCCCCCCk..',
+    '...kCCCCCCCCk...',
+    '....kkkkkkkk....',
+    '....kk....kk....',
+    '................',
+  ]},
+  igloo: { p: {"k": "#5d7a8c", "W": "#f3f8fb", "w": "#c7d9e4", "d": "#2b3a44", "P": "#dfeaf1"}, g: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '......kkkk......',
+    '....kkWWWWkk....',
+    '...kWWWWWWWWk...',
+    '..kWWwWWWWWWWk..',
+    '..kWWWWWWWwWWk..',
+    '.kWWWWWkkkWWWWk.',
+    '.kWwWWkdddkWWWk.',
+    '.kWWWWkdddkWwWk.',
+    '.kWWWWkdddkWWWk.',
+    'kkkkkkkkkkkkkkkk',
+    'PPPPPPPPPPPPPPPP',
+    '................',
+  ]},
+  ocean_ruin: { p: {"k": "#2c3d3a", "S": "#9fb8b0", "s": "#6f8c84", "g": "#3f9a4c"}, g: [
+    '................',
+    '................',
+    '..kkkk..........',
+    '..kSSk..........',
+    '..kSsk.....kk...',
+    '..kSSk....kSSk..',
+    '..kSSk....kSsk..',
+    '..kSsk.g..kSSk..',
+    '..kSSk.g..kSSk..',
+    '..kSSk.gg.kSsk..',
+    '..kSsk..g.kSSk..',
+    '..kSSk.gg.kSSk..',
+    'kkkkkkkkkkkkkkkk',
+    'kSSsSSSSsSSSSsSk',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ]},
+  shipwreck: { p: {"k": "#1e2830", "S": "#8a9aa8"}, g: [
+    '................',
+    '......kkkk......',
+    '.....kSkkSk.....',
+    '.....kSkkSk.....',
+    '......kSSk......',
+    '...kkkkSSkkkk...',
+    '...kSSSSSSSSk...',
+    '...kkkkSSkkkk...',
+    '......kSSk......',
+    '......kSSk......',
+    '.kk...kSSk...kk.',
+    '.kSk..kSSk..kSk.',
+    '..kSkkkSSkkkSk..',
+    '...kSSSSSSSSk...',
+    '....kkkkkkkk....',
+    '................',
+  ]},
+  monument: { p: {"k": "#1f4a44", "P": "#4fc4b0", "H": "#3f7f74"}, g: [
+    '................',
+    '..k....kk....k..',
+    '.kPk..kPPk..kPk.',
+    '.kPk..kPPk..kPk.',
+    '.kPk..kPPk..kPk.',
+    '.kPPkkkPPkkkPPk.',
+    '..kPPPPPPPPPPk..',
+    '...kkkkPPkkkk...',
+    '......kPPk......',
+    '......kHHk......',
+    '......kHHk......',
+    '......kHHk......',
+    '......kHHk......',
+    '......kHHk......',
+    '......kHHk......',
+    '.......kk.......',
+  ]},
+  mansion: { p: {"k": "#1a120c", "D": "#4a3020", "W": "#c9b48f", "g": "#9fd0e6", "R": "#2e1d12", "d": "#1a100a"}, g: [
+    '................',
+    '................',
+    '...kkkkkkkkkk...',
+    '..kRRRRRRRRRRk..',
+    '.kkkkkkkkkkkkkk.',
+    '.kDWDgDWWDgDWDk.',
+    '.kDWDgDWWDgDWDk.',
+    '.kkkkkkkkkkkkkk.',
+    '.kDgDWDWWDWDgDk.',
+    '.kDgDWDddDWDgDk.',
+    '.kDWDWDddDWDWDk.',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+    '................',
+    '................',
+    '................',
+  ]},
+  outpost: { p: {"k": "#1e140c", "R": "#b33a3a", "W": "#9b7a52", "D": "#6b4a2e", "g": "#1a1a1a", "d": "#241810"}, g: [
+    '..........kRR...',
+    '..........kRRR..',
+    '..........k.....',
+    '....kkkkkkk.....',
+    '....kWkWkWk.....',
+    '....kkkkkkk.....',
+    '.....kDDDk......',
+    '.....kDgDk......',
+    '.....kDDDk......',
+    '.....kDDDk......',
+    '.....kDgDk......',
+    '.....kDDDk......',
+    '....kDDDDDk.....',
+    '....kDDdDDk.....',
+    '...kkkkkkkkk....',
+    '................',
+  ]},
+  ruined_portal: { p: {"k": "#120c1a", "O": "#2a1f3d", "P": "#a254e0", "p": "#7a2fc0", "N": "#8a3b2b", "n": "#6a2a1e"}, g: [
+    '................',
+    '...kkkkkk.......',
+    '...kOOOOk.kk....',
+    '...kOkkkk.kOk...',
+    '...kOkPPPPkOk...',
+    '...kOkPPpPkOk...',
+    '...kOkPPPPkOk...',
+    '...kOkPpPPkOk...',
+    '...kOkPPPPkOk...',
+    '...kOkPPPpkOk...',
+    '...kOkPPPPkOk...',
+    '..kkOkkkkkkOkk..',
+    '.kNNOOOOOOOONNk.',
+    'kNNnNNNNNnNNNNNk',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ]},
+  ancient_city: { p: {"k": "#12181f", "D": "#3a4654", "c": "#6fe8f0", "C": "#e0ffff"}, g: [
+    '................',
+    '.......kk.......',
+    '......k..k......',
+    '......kkkk......',
+    '.....kDDDDk.....',
+    '....kkkkkkkk....',
+    '....kDccccDk....',
+    '....kDcCCcDk....',
+    '....kDcCCcDk....',
+    '....kDccccDk....',
+    '....kkkkkkkk....',
+    '.....kDDDDk.....',
+    '......kkkk......',
+    '................',
+    '................',
+    '................',
+  ]},
+  buried_treasure: { p: {"k": "#5a4020", "P": "#e6d3a3", "R": "#c0392b"}, g: [
+    '................',
+    '................',
+    '..kkkkkkkkkkkk..',
+    '.kPPPPPPPPPPPPk.',
+    '.kPRRPPPPPPRRPk.',
+    '.kPPRRPPPPRRPPk.',
+    '.kPPPRRPPRRPPPk.',
+    '.kPPPPRRRRPPPPk.',
+    '.kPPPPRRRRPPPPk.',
+    '.kPPPRRPPRRPPPk.',
+    '.kPPRRPPPPRRPPk.',
+    '.kPRRPPPPPPRRPk.',
+    '.kPPPPPPPPPPPPk.',
+    '..kkkkkkkkkkkk..',
+    '................',
+    '................',
+  ]},
+  trail_ruins: { p: {"k": "#2e1e10", "H": "#8a5a35", "M": "#b0b6bc", "B": "#e2c58a", "b": "#b89a5a"}, g: [
+    '................',
+    '..........kk....',
+    '.........kHHk...',
+    '........kHHk....',
+    '.......kHHk.....',
+    '......kHHk......',
+    '.....kMMk.......',
+    '....kMMMk.......',
+    '...kBBBBk.......',
+    '..kBbBBBk.......',
+    '.kBBbBBk........',
+    '.kBbBBk.........',
+    '.kBBBk..........',
+    '..kkk...........',
+    '................',
+    '................',
+  ]},
+  trial_chambers: { p: {"k": "#2e1a10", "C": "#c6763c"}, g: [
+    '................',
+    '................',
+    '...kkkk.........',
+    '..kCCCCk........',
+    '.kCkkkkCk.......',
+    '.kCk..kCk.......',
+    '.kCk..kCkkkkkkkk',
+    '.kCk..kCCCCCCCCk',
+    '.kCkkkkCkkkCkkCk',
+    '..kCCCCk..kCk...',
+    '...kkkk...kk....',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ]},
+  abandoned_camp: { p: {"k": "#2a1a10", "F": "#ff7a1f", "Y": "#ffd23a", "L": "#7a5230", "l": "#a87a48"}, g: [
+    '................',
+    '................',
+    '................',
+    '.......kk.......',
+    '......kFFk......',
+    '.....kFYFFk.....',
+    '.....kFYYFk.....',
+    '....kFYYYYFk....',
+    '....kFYYYYFk....',
+    '...kkkFYYFkkk...',
+    '..kLLkkkkkkLLk..',
+    '.kLlLLLkkLLLlLk.',
+    '.kkLLLLLLLLLLkk.',
+    '..kkkkkkkkkkkk..',
+    '................',
+    '................',
+  ]},
+  fortress: { p: {"k": "#1e0a0c", "N": "#5a1e22", "n": "#3a1014", "f": "#ff8a2a", "F": "#ffc24a"}, g: [
+    '................',
+    '................',
+    '................',
+    'kkkk..kkkk..kkkk',
+    'kNNk..kNNk..kNNk',
+    'kNNkkkkNNkkkkNNk',
+    'kNnNNNnNNNnNNNnk',
+    'kNNNNNNNNNNNNNNk',
+    'knNNNnNNNnNNNnNk',
+    'kNNNNkkkkkkNNNNk',
+    'kNnNNkfffFkNnNNk',
+    'kNNNNkfFffkNNNNk',
+    'kNNnNkffFfkNnNNk',
+    'kNNNNkfffFkNNNNk',
+    'kkkkkkkkkkkkkkkk',
+    '................',
+  ]},
+  bastion: { p: {"k": "#5a3f08", "G": "#f2c13a", "g": "#fff1a0"}, g: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '.....kkkkkk.....',
+    '....kGgGGGGk....',
+    '...kGGGGGGGGk...',
+    '..kkkkkkkkkkkk..',
+    '..kGgGGkkGgGGk..',
+    '.kGGGGGkkGGGGGk.',
+    '.kkkkkkkkkkkkkk.',
+    '................',
+    '................',
+    '................',
+    '................',
+  ]},
+  end_city: { p: {"k": "#3a2a4a", "P": "#c9a6d6", "p": "#9d7fb0", "g": "#2a1a3a"}, g: [
+    '......kkkk......',
+    '......kPPk......',
+    '.....kkkkkk.....',
+    '.....kPpPPk.....',
+    '.....kPgPPk.....',
+    '....kkkkkkkk....',
+    '....kPPPpPPk....',
+    '....kPgPPgPk....',
+    '....kPPpPPPk....',
+    '...kkkkkkkkkk...',
+    '...kPpPPPPpPk...',
+    '...kPPgPPgPPk...',
+    '...kPPPkkPPPk...',
+    '...kPpPkkPpPk...',
+    '..kkkkkkkkkkkk..',
+    '................',
+  ]},
+  end_city_ship: { p: {"k": "#2e2440", "W": "#b9a6d9", "w": "#8e78b8"}, g: [
+    '................',
+    '................',
+    '................',
+    '.kk..........kk.',
+    'kWWk........kWWk',
+    'kWWWk......kWWWk',
+    'kWwWWk....kWWwWk',
+    '.kWWWWkkkkWWWWk.',
+    '.kWwWWWkkWWWwWk.',
+    '..kWWWWkkWWWWk..',
+    '..kWwWk..kWwWk..',
+    '...kWWk..kWWk...',
+    '...kWk....kWk...',
+    '....k......k....',
+    '................',
+    '................',
+  ]},
+  stronghold: { p: {"k": "#3a2a10", "M": "#b08a3a", "W": "#f2eee2", "R": "#d03a2c", "S": "#6a7480"}, g: [
+    '................',
+    '................',
+    '.....kkkkkk.....',
+    '....kMMMMMMk....',
+    '...kMWWWWWWMk...',
+    '..kMWWWRRWWWMk..',
+    '..kMWWRRRRWWMk..',
+    '..kMWWWkkWWWMk..',
+    '..kMWWSSSSWWMk..',
+    '..kMWWWSSWWWMk..',
+    '...kMWWWWWWMk...',
+    '....kMMMMMMk....',
+    '.....kkkkkk.....',
+    '................',
+    '................',
+    '................',
+  ]},
+  spawn: { p: {"k": "#4a1410", "R": "#d33a2c", "r": "#ff8a7a", "W": "#ffffff"}, g: [
+    '................',
+    '.....kkkkkk.....',
+    '....kRRRRRRk....',
+    '...kRrRRRRRRk...',
+    '...kRRRkkRRRk...',
+    '...kRRkWWkRRk...',
+    '...kRRkWWkRRk...',
+    '...kRRRkkRRRk...',
+    '....kRRRRRRk....',
+    '....kRRRRRRk....',
+    '.....kRRRRk.....',
+    '......kRRk......',
+    '.......kk.......',
+    '................',
+    '................',
+    '................',
+  ]},
+};
+// Renders ICONS grids with selective outlines (outline takes a dark tone of the fill it borders),
+// top-left lighting, and a soft drop shadow. Returns RGBA pixels at 18x18 (1px shadow margin).
+function hex(c){return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];}
+function mix(a,b,t){return a.map((v,i)=>Math.round(v+(b[i]-v)*t));}
+// shift shadows toward blue-violet, highlights toward warm yellow, so tones read hand-picked
+const SH=[40,30,70], HI=[255,240,200];
+function renderIcon(v){
+  const N=16, W=18, px=new Uint8ClampedArray(W*W*4);
+  const at=(x,y)=>(x<0||y<0||x>=N||y>=N)?'.':v.g[y][x];
+  const isFill=c=>c!=='.'&&c!=='k';
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const c=at(x,y); if(c==='.')continue;
+    let col;
+    if(c==='k'){
+      // outline: darken the average neighbouring fill colour; edge facing outside gets the darkest tone
+      const nb=[[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>at(x+dx,y+dy)).filter(isFill);
+      const outside=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>at(x+dx,y+dy)==='.');
+      const base=nb.length?nb.map(n=>hex(v.p[n])).reduce((a,b)=>a.map((q,i)=>q+b[i])).map(q=>q/nb.length):hex(v.p.k);
+      col=mix(mix(base,SH,0.55),[0,0,0],outside?0.45:0.25);
+    }else{
+      col=hex(v.p[c]);
+      const up=at(x,y-1), lf=at(x-1,y), dn=at(x,y+1), rt=at(x+1,y);
+      if(up==='.'||up==='k'||lf==='.'||lf==='k') col=mix(col,HI,0.18);
+      else if(dn==='k'||rt==='k') col=mix(col,SH,0.18);
+    }
+    const i=((y+1)*W+(x+1))*4; px[i]=col[0];px[i+1]=col[1];px[i+2]=col[2];px[i+3]=255;
+  }
+  // drop shadow (down-right), only where empty
+  const out=new Uint8ClampedArray(px);
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++){
+    const i=(y*W+x)*4; if(px[i+3])continue;
+    const sx=x-1, sy=y-1;
+    if(sx>=0&&sy>=0&&px[(sy*W+sx)*4+3]){out[i]=20;out[i+1]=16;out[i+2]=30;out[i+3]=90;}
+  }
+  return out;
+}
+/* ICONS:END */
+(() => {
+'use strict';
+// ---------- Versions ----------
+// [key, label, cubiomes generator id]. Java 1.21.5 through 26.3 use the same climate noise and biome layout
+// as 1.21.4, apart from the new biomes noted in the panel, so they share its generator.
+const JAVA_VERSIONS = [
+  ['26.3','26.3 (latest)',28],['26.2','26.2',28],['26.1','26.1 – 26.1.2',28],['1.21.5','1.21.5 – 1.21.11',28],['1.21.4','1.21.4',28],
+  ['1.21.2','1.21.2 – 1.21.3',27],['1.21','1.21 – 1.21.1',26],['1.20','1.20.x',25],['1.19.3','1.19.3 – 1.19.4',24],['1.19','1.19 – 1.19.2',23],
+  ['1.18','1.18.x',22],['1.17','1.17.x',21],['1.16.2','1.16.2 – 1.16.5',20],['1.16','1.16 – 1.16.1',19],['1.15','1.15.x',18],['1.14','1.14.x',17],['1.13','1.13.x',16],
+  ['1.12','1.12.x',15],['1.11','1.11.x',14],['1.10','1.10.x',13],['1.9','1.9.x',12],['1.8','1.8.x',11],['1.7','1.7.x',10],['1.6','1.6.x',9],['1.5','1.5.x',8],['1.4','1.4.x',7],
+  ['1.3','1.3.x',6],['1.2','1.2.x',5],['1.1','1.1',4],['1.0','1.0',3],['b1.8','Beta 1.8',2],['b1.7','Beta 1.7',1]];
+// Bedrock 1.18+ shares the Java biome generator for the same seed. Older Bedrock worlds used a different one.
+const BEDROCK_VERSIONS = [['br26','26.x (latest)',28],['br1.21.50','1.21.50 – 1.21.x',28],['br1.21','1.21.0 – 1.21.40',26],['br1.20','1.20.x',25],['br1.19','1.19.x',24],['br1.18','1.18.x',22]];
+const verList = () => S.edition === 'bedrock' ? BEDROCK_VERSIONS : JAVA_VERSIONS;
+const javaAtLeast = k => { const order = JAVA_VERSIONS.map(v => v[0]); return S.edition === 'java' && order.indexOf(S.ver) <= order.indexOf(k); };
+
+// ---------- Structures (cubiomes ids) ----------
+const STRUCTS = {
+  1:{n:'Desert temple',c:'#d6a842',g:'D'}, 2:{n:'Jungle temple',c:'#4f8a3a',g:'J'}, 3:{n:'Swamp hut',c:'#5d6b3a',g:'W'},
+  4:{n:'Igloo',c:'#7fb6d6',g:'I'}, 5:{n:'Village',c:'#c9772f',g:'V'}, 6:{n:'Ocean ruin',c:'#3a8f8c',g:'R'},
+  7:{n:'Shipwreck',c:'#8a6a4a',g:'S'}, 8:{n:'Ocean monument',c:'#2f6f9e',g:'M'}, 9:{n:'Woodland mansion',c:'#6b4a2e',g:'W'},
+  10:{n:'Pillager outpost',c:'#6a6e72',g:'P'}, 11:{n:'Ruined portal',c:'#7d3fb3',g:'R'}, 12:{n:'Ruined portal',c:'#7d3fb3',g:'R'},
+  13:{n:'Ancient city',c:'#2b5a6b',g:'A'}, 14:{n:'Buried treasure',c:'#c9a227',g:'$'}, 18:{n:'Nether fortress',c:'#7a2a2a',g:'F'},
+  19:{n:'Bastion remnant',c:'#3c3c46',g:'B'}, 20:{n:'End city',c:'#9b7fc9',g:'E'}, 23:{n:'Trail ruins',c:'#a5603f',g:'T'},
+  24:{n:'Trial chambers',c:'#b0702a',g:'C'}, 100:{n:'Abandoned camp',c:'#8d6b3f',g:'A'},
+};
+const ICON_KEY = { 1:'desert_temple', 2:'jungle_temple', 3:'swamp_hut', 4:'igloo', 5:'village', 6:'ocean_ruin', 7:'shipwreck', 8:'monument', 9:'mansion', 10:'outpost', 11:'ruined_portal', 12:'ruined_portal', 13:'ancient_city', 14:'buried_treasure', 18:'fortress', 19:'bastion', 20:'end_city', endship:'end_city_ship', 23:'trail_ruins', 24:'trial_chambers', 100:'abandoned_camp', stronghold:'stronghold', spawn:'spawn' };
+// Pre-rendered 22x22 sprites: 16px art with a white halo and a dark outer edge so icons stand out on any biome.
+function haloSprite(base) {
+  const B = 18, N = 22, off = 2, out = new Uint8ClampedArray(N * N * 4);
+  const solid = (x, y) => x >= 0 && y >= 0 && x < B && y < B && base[(y * B + x) * 4 + 3] === 255;
+  const near = (x, y, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.abs(dx) + Math.abs(dy) <= r + (r > 1 ? 1 : 0) && solid(x + dx, y + dy)) return true; return false; };
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const bx = x - off, by = y - off, i = (y * N + x) * 4;
+    if (solid(bx, by)) { const j = (by * B + bx) * 4; out[i] = base[j]; out[i+1] = base[j+1]; out[i+2] = base[j+2]; out[i+3] = 255; }
+    else if (near(bx, by, 1)) { out[i] = 255; out[i+1] = 255; out[i+2] = 255; out[i+3] = 245; }
+    else if (near(bx, by, 2)) { out[i] = 10; out[i+1] = 12; out[i+2] = 18; out[i+3] = 150; }
+  }
+  return out;
+}
+const SPRITES = {};
+for (const [k, v] of Object.entries(ICONS)) {
+  const c = document.createElement('canvas'); c.width = c.height = 22;
+  c.getContext('2d').putImageData(new ImageData(haloSprite(renderIcon(v)), 22, 22), 0, 0);
+  SPRITES[k] = c;
+}
+const iconURL = k => SPRITES[ICON_KEY[k]] ? SPRITES[ICON_KEY[k]].toDataURL() : null;
+const SPECIAL = { endship:{n:'End city with ship',c:'#9b7fc9',g:''}, stronghold:{n:'Stronghold',c:'#3d4b52',g:'S'}, spawn:{n:'World spawn',c:'#b3261e',g:'★'}, slime:{n:'Slime chunks',c:'#6fbf3a',g:''}, grid:{n:'Chunk grid',c:'#8a96a0',g:''} };
+const DIM_LAYERS = {
+  '0': ['spawn','stronghold',5,1,2,3,4,6,7,8,9,10,11,13,14,23,24,100,'slime','grid'],
+  '-1': [18,19,12,'grid'],
+  '1': [20,'endship','grid'],
+};
+// Zoom (pixels per block) below which a structure type is not calculated.
+const minZoom = st => st === 14 ? 0.5 : (st === 11 || st === 12 || st === 6 || st === 7) ? 1/16 : 1/48;
+
+// ---------- State ----------
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('ss.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('ss.' + k, JSON.stringify(v)); } catch {} },
+};
+const S = {
+  seedText: store.get('seed', '8091867987493326313'),
+  edition: store.get('edition', 'java'),
+  ver: store.get('ver', '26.3'), mc: 28, dim: '0', y: 320, large: false,
+  layers: Object.assign({ spawn:true, stronghold:true, 5:true, 1:true, 2:true, 3:true, 4:false, 6:false, 7:false, 8:true, 9:true, 10:true, 11:false, 12:false, 13:true, 14:false, 23:true, 24:true, 100:true, 18:true, 19:true, 20:true, endship:true, slime:false, grid:false }, store.get('layers2', {})),
+  cx: 0, cz: 0, ppb: 0.25, // view centre (blocks) and pixels per block
+};
+let world = null;   // {p, gen, meta}
+let gen = 0;
+
+// ---------- Seed parsing ----------
+function javaHash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; return BigInt(h); }
+function parseSeed(t) {
+  t = t.trim();
+  if (t === '') return null;
+  if (/^[+-]?\d+$/.test(t)) {
+    const v = BigInt(t);
+    if (v >= -(1n << 63n) && v < (1n << 63n)) return v;
+  }
+  return javaHash(t);
+}
+function seedParts(v) { const u = BigInt.asUintN(64, v); return { hi: Number(u >> 32n), lo: Number(u & 0xffffffffn) }; }
+
+// ---------- Workers ----------
+const NW = Math.max(1, Math.min(6, (navigator.hardwareConcurrency || 4) - 1));
+const workers = [];
+let jobSeq = 0;
+const queue = [];         // pending jobs: {msg, cb, prio}
+const inflight = new Map();
+function spawnWorkers() {
+  for (let i = 0; i < NW; i++) {
+    const w = new Worker('worker.js');
+    w.busy = false;
+    w.onmessage = ev => {
+      w.busy = false;
+      const j = inflight.get(ev.data.job); inflight.delete(ev.data.job);
+      if (j && j.gen === gen) j.cb(ev.data);
+      pump();
+    };
+    w.onerror = e => { w.busy = false; setStatus('Generator failed to load. Reload the page to try again.'); };
+    workers.push(w);
+  }
+}
+function submit(msg, cb, prio = 0) { queue.push({ msg, cb, prio, gen }); pump(); }
+function pump() {
+  if (!queue.length) { updateStatus(); return; }
+  for (const w of workers) {
+    if (w.busy || !queue.length) continue;
+    // pick the highest-priority (lowest number) job from the current generation
+    let bi = -1;
+    for (let i = 0; i < queue.length; i++) {
+      if (queue[i].gen !== gen) { queue.splice(i--, 1); continue; }
+      if (bi < 0 || queue[i].prio < queue[bi].prio) bi = i;
+    }
+    if (bi < 0) break;
+    const j = queue.splice(bi, 1)[0];
+    const job = ++jobSeq;
+    inflight.set(job, j);
+    w.busy = true;
+    w.postMessage({ ...j.msg, job, p: world.p });
+  }
+  updateStatus();
+}
+
+// ---------- Caches ----------
+let tiles = new Map();     // key -> {state, canvas, ids, s}
+let structTiles = new Map(); // key -> {state, data}
+let slimeTiles = new Map();
+const TILE = 128;
+const STILE = 4096; // structure query tile in blocks
+const SLT = 64;     // slime tile in chunks
+
+function resetWorld() {
+  const sv = parseSeed(S.seedText);
+  if (sv == null) return;
+  const { hi, lo } = seedParts(sv);
+  gen++;
+  queue.length = 0;
+  tiles = new Map(); structTiles = new Map(); slimeTiles = new Map();
+  world = { p: { mc: S.mc, dim: +S.dim, hi, lo, large: S.large }, seed: sv, gen, meta: null };
+  closePop();
+  submit({ type: 'meta', bedrock: S.edition === 'bedrock' }, d => {
+    world.meta = d; world.meta.strongholds = [];
+    if (javaAtLeast('26.3')) world.meta.supported.push(100);
+    buildLayers(); draw();
+    if (S.dim === '0' && S.edition === 'java' && S.mc >= 3)
+      submit({ type: 'strongholds' }, s => { world.meta.strongholds = s.list; buildLayers(); draw(); }, -5);
+  }, -10);
+  store.set('seed', S.seedText); store.set('edition', S.edition); store.set('ver', S.ver);
+  updateSeedHint(sv);
+  draw();
+}
+
+function updateSeedHint(sv) {
+  const t = S.seedText.trim();
+  const numeric = /^[+-]?\d+$/.test(t) && BigInt(t) === sv;
+  $('seedHint').textContent = numeric ? 'Numbers are used as-is. Text seeds are hashed the same way the game does.' : `Text seed hashes to ${sv}.`;
+}
+
+// ---------- Rendering ----------
+const cv = $('map'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  const r = $('mapwrap').getBoundingClientRect();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = r.width; H = r.height;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  draw();
+}
+const VALID_SCALES = [1, 4, 16, 64, 256];
+function chooseScale() {
+  // aim for each generated cell to cover >= ~1.5 screen pixels
+  const minS = S.mc >= 22 && S.dim === '0' ? (S.ppb >= 4 ? 1 : 4) : 1;
+  for (const s of VALID_SCALES) if (s >= minS && s * S.ppb >= 1.5) return s;
+  return 256;
+}
+const b2s = (bx, bz) => [(bx - S.cx) * S.ppb + W / 2, (bz - S.cz) * S.ppb + H / 2];
+const s2b = (sx, sy) => [(sx - W / 2) / S.ppb + S.cx, (sy - H / 2) / S.ppb + S.cz];
+
+let raf = 0;
+function draw() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#2a3138'; ctx.fillRect(0, 0, W, H);
+  if (!world || !world.meta) return;
+  const s = chooseScale();
+  const span = TILE * s;
+  const [bx0, bz0] = s2b(0, 0), [bx1, bz1] = s2b(W, H);
+  const tx0 = Math.floor(bx0 / span), tz0 = Math.floor(bz0 / span), tx1 = Math.floor(bx1 / span), tz1 = Math.floor(bz1 / span);
+  const ccx = (bx0 + bx1) / 2, ccz = (bz0 + bz1) / 2;
+  for (let tz = tz0; tz <= tz1; tz++) for (let tx = tx0; tx <= tx1; tx++) {
+    const t = getTile(s, tx, tz, Math.hypot((tx + .5) * span - ccx, (tz + .5) * span - ccz));
+    const [sx, sy] = b2s(tx * span, tz * span);
+    const sz = span * S.ppb;
+    if (t && t.canvas) ctx.drawImage(t.canvas, sx, sy, sz + 0.5, sz + 0.5);
+    else drawFallback(s, tx, tz, sx, sy, sz);
+  }
+  if (S.layers.slime && S.dim === '0' && S.ppb >= 0.25) drawSlime(bx0, bz0, bx1, bz1);
+  if (S.layers.grid && S.ppb >= 0.5) drawGrid(bx0, bz0, bx1, bz1);
+  drawStructures(bx0, bz0, bx1, bz1);
+  drawAxes();
+}
+
+// draw a coarser cached tile while the right one is still generating
+function drawFallback(s, tx, tz, sx, sy, sz) {
+  for (const cs of VALID_SCALES) {
+    if (cs <= s) continue;
+    const f = cs / s;
+    const ptx = Math.floor(tx / f), ptz = Math.floor(tz / f);
+    const p = tiles.get(`${cs}|${ptx}|${ptz}`);
+    if (p && p.canvas) {
+      const sub = TILE / f;
+      const ox = (tx - ptx * f) * sub, oz = (tz - ptz * f) * sub;
+      ctx.drawImage(p.canvas, ox, oz, sub, sub, sx, sy, sz + 0.5, sz + 0.5);
+      return;
+    }
+  }
+  ctx.fillStyle = '#323a41'; ctx.fillRect(sx, sy, sz + 0.5, sz + 0.5);
+}
+
+function getTile(s, tx, tz, dist) {
+  const key = `${s}|${tx}|${tz}`;
+  let t = tiles.get(key);
+  if (t) return t;
+  t = { state: 'pending' };
+  tiles.set(key, t);
+  submit({ type: 'tile', x: tx * TILE, z: tz * TILE, s, y: S.y }, d => {
+    const c = document.createElement('canvas'); c.width = c.height = TILE;
+    const g = c.getContext('2d'); const img = g.createImageData(TILE, TILE);
+    const col = world.meta.col;
+    for (let i = 0; i < d.ids.length; i++) {
+      const id = d.ids[i];
+      if (id < 0 || id > 255) { img.data[4*i+3] = 255; continue; }
+      img.data[4*i] = col[3*id]; img.data[4*i+1] = col[3*id+1]; img.data[4*i+2] = col[3*id+2]; img.data[4*i+3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    t.canvas = c; t.ids = d.ids; t.state = 'done';
+    draw();
+  }, dist / span(s));
+  if (tiles.size > 1800) pruneTiles();
+  return t;
+}
+const span = s => TILE * s;
+function pruneTiles() {
+  const s = chooseScale();
+  for (const [k, t] of tiles) { if (t.state === 'done' && +k.split('|')[0] !== s) tiles.delete(k); if (tiles.size < 1200) break; }
+}
+
+function biomeAt(bx, bz) {
+  for (const s of VALID_SCALES) {
+    const sp = TILE * s;
+    const tx = Math.floor(bx / sp), tz = Math.floor(bz / sp);
+    const t = tiles.get(`${s}|${tx}|${tz}`);
+    if (t && t.ids) {
+      const ix = Math.floor((bx - tx * sp) / s), iz = Math.floor((bz - tz * sp) / s);
+      return t.ids[iz * TILE + ix];
+    }
+  }
+  return -1;
+}
+
+function drawGrid(bx0, bz0, bx1, bz1) {
+  ctx.strokeStyle = 'rgba(0,0,0,.22)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = Math.floor(bx0 / 16) * 16; x <= bx1; x += 16) { const [sx] = b2s(x, 0); ctx.moveTo(Math.round(sx) + .5, 0); ctx.lineTo(Math.round(sx) + .5, H); }
+  for (let z = Math.floor(bz0 / 16) * 16; z <= bz1; z += 16) { const [, sy] = b2s(0, z); ctx.moveTo(0, Math.round(sy) + .5); ctx.lineTo(W, Math.round(sy) + .5); }
+  ctx.stroke();
+}
+function drawAxes() {
+  // thin lines along x = 0 and z = 0 so the origin is easy to find
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  const [ox, oz] = b2s(0, 0);
+  ctx.beginPath(); ctx.moveTo(Math.round(ox) + .5, 0); ctx.lineTo(Math.round(ox) + .5, H); ctx.moveTo(0, Math.round(oz) + .5); ctx.lineTo(W, Math.round(oz) + .5); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawSlime(bx0, bz0, bx1, bz1) {
+  const bedrock = S.edition === 'bedrock';
+  const cx0 = Math.floor(bx0 / 16), cz0 = Math.floor(bz0 / 16), cx1 = Math.floor(bx1 / 16), cz1 = Math.floor(bz1 / 16);
+  ctx.fillStyle = 'rgba(111,191,58,.55)'; ctx.strokeStyle = 'rgba(40,90,20,.9)'; ctx.lineWidth = 1;
+  for (let tz = Math.floor(cz0 / SLT); tz <= Math.floor(cz1 / SLT); tz++)
+  for (let tx = Math.floor(cx0 / SLT); tx <= Math.floor(cx1 / SLT); tx++) {
+    const key = `${tx}|${tz}`;
+    let t = slimeTiles.get(key);
+    if (!t) {
+      t = { state: 'pending' }; slimeTiles.set(key, t);
+      submit({ type: 'slime', cx: tx * SLT, cz: tz * SLT, w: SLT, h: SLT, bedrock }, d => { t.bits = d.bits; draw(); }, 1);
+      continue;
+    }
+    if (!t.bits) continue;
+    for (let j = 0; j < SLT; j++) for (let i = 0; i < SLT; i++) {
+      if (!t.bits[j * SLT + i]) continue;
+      const cx = tx * SLT + i, cz = tz * SLT + j;
+      if (cx < cx0 || cx > cx1 || cz < cz0 || cz > cz1) continue;
+      const [sx, sy] = b2s(cx * 16, cz * 16); const sz = 16 * S.ppb;
+      ctx.fillRect(sx, sy, sz, sz);
+      if (sz >= 6) ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.round(sz) - 1, Math.round(sz) - 1);
+    }
+  }
+}
+
+// ---------- Structures ----------
+let hitList = []; // [{x,z,sx,sy,kind}]
+function activeStructTypes() {
+  if (!world.meta || S.edition === 'bedrock') return [];
+  return (DIM_LAYERS[S.dim] || []).filter(k => typeof k === 'number' && (S.layers[k] || (k === 20 && S.layers.endship)) && world.meta.supported.includes(k));
+}
+function drawStructures(bx0, bz0, bx1, bz1) {
+  hitList = [];
+  const types = activeStructTypes().filter(st => S.ppb >= minZoom(st));
+  if (types.length) {
+    const tx0 = Math.floor(bx0 / STILE), tz0 = Math.floor(bz0 / STILE), tx1 = Math.floor(bx1 / STILE), tz1 = Math.floor(bz1 / STILE);
+    for (let tz = tz0; tz <= tz1; tz++) for (let tx = tx0; tx <= tx1; tx++) {
+      for (const st of types) {
+        const key = `${st}|${tx}|${tz}`;
+        let t = structTiles.get(key);
+        if (!t) {
+          t = { state: 'pending' }; structTiles.set(key, t);
+          submit({ type: 'structs', types: [st], bx0: tx * STILE, bz0: tz * STILE, bx1: tx * STILE + STILE - 1, bz1: tz * STILE + STILE - 1 },
+            d => { t.data = d.out[st] || []; t.ships = d.out.ships; draw(); }, 2 + Math.hypot(tx - (tx0 + tx1) / 2, tz - (tz0 + tz1) / 2));
+          continue;
+        }
+        if (!t.data) continue;
+        for (let i = 0; i < t.data.length; i += 2) {
+          if (st === 20) {
+            const ship = t.ships && t.ships[i / 2];
+            if (ship ? S.layers.endship : S.layers[20]) marker(t.data[i], t.data[i + 1], ship ? 'endship' : 20);
+          } else marker(t.data[i], t.data[i + 1], st);
+        }
+      }
+    }
+  }
+  if (S.dim === '0' && S.edition === 'java' && world.meta) {
+    if (S.layers.stronghold) for (let i = 0; i < world.meta.strongholds.length; i += 2) marker(world.meta.strongholds[i], world.meta.strongholds[i + 1], 'stronghold');
+    if (S.layers.spawn && world.meta.spawn) marker(world.meta.spawn[0], world.meta.spawn[1], 'spawn');
+  }
+}
+function iconScale() {
+  // whole device pixels per art pixel, so the pixel art never blurs
+  const want = S.ppb < 1/8 ? 1 : S.ppb < 1 ? 1.5 : 2;
+  return Math.max(1, Math.round(want * DPR)) / DPR;
+}
+function marker(x, z, kind) {
+  const [sx, sy] = b2s(x, z);
+  if (sx < -40 || sy < -40 || sx > W + 40 || sy > H + 40) return;
+  const sprite = SPRITES[ICON_KEY[kind]];
+  const sc = iconScale(), size = 22 * sc;
+  // the 16px art starts 3px into the sprite, so its centre is at 11px
+  const ox = Math.round((sx - 11 * sc) * DPR) / DPR, oy = Math.round((sy - 11 * sc) * DPR) / DPR;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(sprite, ox, oy, size, size);
+  hitList.push({ x, z, sx, sy, kind, r: 8 * sc });
+}
+
+// ---------- Layers UI ----------
+function buildLayers() {
+  const el = $('layers'); el.innerHTML = '';
+  const bedrock = S.edition === 'bedrock';
+  const sup = world.meta ? world.meta.supported : [];
+  for (const k of DIM_LAYERS[S.dim]) {
+    const info = STRUCTS[k] || SPECIAL[k];
+    let avail = true;
+    if (typeof k === 'number') avail = !bedrock && sup.includes(k);
+    if (k === 'endship') avail = !bedrock && sup.includes(20);
+    if ((k === 'stronghold' || k === 'spawn') && (bedrock || !world.meta || !world.meta.spawn && k === 'spawn' || (k === 'stronghold' && S.mc < 3))) avail = false;
+    const lab = document.createElement('label');
+    lab.className = 'layer' + (avail ? '' : ' off');
+    const id = 'ly_' + k;
+    lab.innerHTML = `<input type="checkbox" id="${id}" ${S.layers[k] && avail ? 'checked' : ''} ${avail ? '' : 'disabled'}>${iconURL(k) ? `<img class="ico" src="${iconURL(k)}" alt="">` : `<span class="sw" style="background:${info.c}"></span>`}<span class="t">${info.n}</span>`;
+    lab.title = avail ? info.n : (bedrock && k !== 'slime' && k !== 'grid' ? 'Not available for Bedrock yet' : 'Not in this version');
+    lab.querySelector('input').addEventListener('change', e => { S.layers[k] = e.target.checked; store.set('layers2', S.layers); draw(); });
+    el.appendChild(lab);
+  }
+  const note = $('layerNote');
+  if (bedrock) {
+    note.hidden = false;
+    note.innerHTML = '<b>Bedrock:</b> biomes (1.18 and later) and slime chunks are accurate. Structure positions are calculated differently on Bedrock, so they are not shown yet.';
+  } else if (javaAtLeast('26.2') && S.dim === '0') {
+    note.hidden = false;
+    note.innerHTML = javaAtLeast('26.3')
+      ? '<b>26.3:</b> dappled forests aren’t drawn yet. They appear near cold biomes in place of some forest. Sulfur caves (26.2) are underground only. Everything else matches the game.'
+      : '<b>26.2:</b> sulfur caves are underground only and aren’t drawn yet. Surface biomes and structures match the game.';
+  } else if (S.mc <= 2) {
+    note.hidden = false; note.innerHTML = '<b>Beta:</b> only biomes and slime chunks are available for Beta versions.';
+  } else note.hidden = true;
+}
+
+// ---------- Interaction ----------
+const pointers = new Map();
+let dragStart = null, pinch = null, moved = false;
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+  moved = false;
+  if (pointers.size === 1) { dragStart = { x: e.offsetX, y: e.offsetY, cx: S.cx, cz: S.cz }; cv.classList.add('drag'); }
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a[0]-b[0], a[1]-b[1]), ppb: S.ppb }; }
+});
+cv.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+  if (pointers.size === 2 && pinch) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a[0]-b[0], a[1]-b[1]);
+    zoomAt((a[0]+b[0])/2, (a[1]+b[1])/2, pinch.ppb * d / pinch.d / S.ppb);
+    moved = true;
+  } else if (dragStart && pointers.size === 1) {
+    const dx = e.offsetX - dragStart.x, dy = e.offsetY - dragStart.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+    S.cx = dragStart.cx - dx / S.ppb; S.cz = dragStart.cz - dy / S.ppb;
+    closePop(); draw();
+  }
+  readout(e.offsetX, e.offsetY);
+});
+const endPtr = e => {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (pointers.size === 1) { const [p] = [...pointers.values()]; dragStart = { x: p[0], y: p[1], cx: S.cx, cz: S.cz }; }
+  if (!pointers.size) { dragStart = null; cv.classList.remove('drag'); if (!moved && e.type === 'pointerup') clickAt(e.offsetX, e.offsetY); }
+};
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0018))); }, { passive: false });
+
+const MIN_PPB = 1/256, MAX_PPB = 16;
+function zoomAt(sx, sy, f) {
+  const [bx, bz] = s2b(sx, sy);
+  S.ppb = Math.min(MAX_PPB, Math.max(MIN_PPB, S.ppb * f));
+  S.cx = bx - (sx - W / 2) / S.ppb; S.cz = bz - (sy - H / 2) / S.ppb;
+  closePop(); draw();
+}
+$('zin').onclick = () => zoomAt(W / 2, H / 2, 2);
+$('zout').onclick = () => zoomAt(W / 2, H / 2, 0.5);
+$('home').onclick = () => { S.cx = 0; S.cz = 0; closePop(); draw(); };
+
+function readout(sx, sy) {
+  const [bx, bz] = s2b(sx, sy);
+  const x = Math.floor(bx), z = Math.floor(bz);
+  $('rx').textContent = x; $('rz').textContent = z;
+  $('rc').textContent = `${x >> 4}, ${z >> 4}`;
+  const id = biomeAt(x, z);
+  if (id >= 0 && world && world.meta) {
+    const c = world.meta.col;
+    $('rb').textContent = prettyBiome(world.meta.names[id]);
+    $('rbsw').style.background = `rgb(${c[3*id]},${c[3*id+1]},${c[3*id+2]})`;
+  } else { $('rb').textContent = '—'; $('rbsw').style.background = 'transparent'; }
+}
+const prettyBiome = n => (n || 'unknown').replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+
+// ---------- Popover ----------
+let popEl = null;
+function closePop() { if (popEl) { popEl.remove(); popEl = null; } }
+function clickAt(sx, sy) {
+  closePop();
+  let best = null, bd = 1e9;
+  for (const h of hitList) { const d = Math.hypot(h.sx - sx, h.sy - sy); if (d <= h.r + 4 && d < bd) { bd = d; best = h; } }
+  if (!best) return;
+  const info = STRUCTS[best.kind] || SPECIAL[best.kind];
+  const dist = Math.round(Math.hypot(best.x, best.z));
+  popEl = document.createElement('div'); popEl.className = 'pop';
+  const tp = S.dim === '-1' ? `/execute in minecraft:the_nether run tp @s ${best.x} 100 ${best.z}` : S.dim === '1' ? `/execute in minecraft:the_end run tp @s ${best.x} 80 ${best.z}` : `/tp @s ${best.x} ~ ${best.z}`;
+  popEl.innerHTML = `<button class="x" aria-label="Close">×</button><h3><img class="ico lg" src="${iconURL(best.kind)}" alt="">${info.n}</h3>
+    <div class="coords">X ${best.x} · Z ${best.z}<br>${dist.toLocaleString()} blocks from 0, 0</div>
+    <div class="acts"><button class="btn" data-a="xz">Copy X Z</button><button class="btn" data-a="tp">Copy /tp</button></div>`;
+  const wrap = $('mapwrap'); wrap.appendChild(popEl);
+  const pw = popEl.offsetWidth, ph = popEl.offsetHeight;
+  popEl.style.left = Math.max(8, Math.min(W - pw - 8, best.sx + 12)) + 'px';
+  popEl.style.top = Math.max(8, Math.min(H - ph - 8, best.sy - ph / 2)) + 'px';
+  popEl.querySelector('.x').onclick = closePop;
+  popEl.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+    const text = b.dataset.a === 'tp' ? tp : `${best.x} ${best.z}`;
+    const done = () => { b.textContent = 'Copied'; setTimeout(() => b.textContent = b.dataset.a === 'tp' ? 'Copy /tp' : 'Copy X Z', 1200); };
+    try { navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, b)); } catch { fallbackCopy(text, b); }
+  });
+}
+function fallbackCopy(text, b) { b.textContent = text; b.style.userSelect = 'all'; }
+
+// ---------- Status ----------
+let statusText = null;
+function setStatus(t) { statusText = t; updateStatus(); }
+function updateStatus() {
+  const el = $('status');
+  if (statusText) { el.hidden = false; el.textContent = statusText; return; }
+  const n = queue.length + inflight.size;
+  if (!world || !world.meta) { el.hidden = false; el.textContent = 'Loading generator…'; return; }
+  const hidden = activeStructTypes().filter(st => S.ppb < minZoom(st)).length;
+  if (n > 0) { el.hidden = false; el.textContent = `Generating… ${n} left`; }
+  else if (hidden) { el.hidden = false; el.textContent = 'Zoom in to see more structures'; }
+  else el.hidden = true;
+}
+
+// ---------- Controls ----------
+function fillVersions() {
+  const list = verList();
+  const sel = $('version'); sel.innerHTML = '';
+  for (const [key, label] of list) { const o = document.createElement('option'); o.value = key; o.textContent = label; sel.appendChild(o); }
+  if (!list.some(v => v[0] === S.ver)) S.ver = list[0][0];
+  sel.value = S.ver;
+  S.mc = list.find(v => v[0] === S.ver)[2];
+  syncControls();
+}
+function syncControls() {
+  $('ylevel').disabled = !(S.mc >= 22 && S.dim === '0');
+  for (const b of $('edition').children) b.setAttribute('aria-pressed', b.dataset.v === S.edition);
+  for (const b of $('dimension').children) b.setAttribute('aria-pressed', b.dataset.v === S.dim);
+}
+function segHandler(id, fn) { $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (b) fn(b.dataset.v); }); }
+segHandler('edition', v => { S.edition = v; fillVersions(); resetWorld(); buildLayers(); });
+segHandler('dimension', v => { S.dim = v; syncControls(); resetWorld(); buildLayers(); });
+$('version').onchange = e => { S.ver = e.target.value; S.mc = verList().find(v => v[0] === S.ver)[2]; syncControls(); resetWorld(); buildLayers(); };
+$('ylevel').onchange = e => { S.y = +e.target.value; resetWorld(); };
+$('large').onchange = e => { S.large = e.target.checked; resetWorld(); };
+$('go').onclick = () => { S.seedText = $('seed').value; resetWorld(); };
+$('seed').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+$('randomSeed').onclick = () => {
+  const a = new Uint32Array(2); crypto.getRandomValues(a);
+  const v = BigInt.asIntN(64, (BigInt(a[0]) << 32n) | BigInt(a[1]));
+  $('seed').value = S.seedText = v.toString(); resetWorld();
+};
+$('gotoBtn').onclick = () => {
+  const x = parseInt($('gotoX').value, 10), z = parseInt($('gotoZ').value, 10);
+  if (Number.isFinite(x) && Number.isFinite(z)) { S.cx = x; S.cz = z; if (S.ppb < 0.5) S.ppb = 0.5; closePop(); draw(); }
+};
+for (const id of ['gotoX', 'gotoZ']) $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('gotoBtn').click(); });
+$('toggleAll').onclick = () => {
+  const keys = DIM_LAYERS[S.dim].filter(k => k !== 'grid');
+  const anyOn = keys.some(k => S.layers[k]);
+  for (const k of keys) S.layers[k] = !anyOn;
+  $('toggleAll').textContent = anyOn ? 'Show all' : 'Hide all';
+  store.set('layers2', S.layers); buildLayers(); draw();
+};
+$('sheetToggle').onclick = () => {
+  const p = $('panel'); const c = p.classList.toggle('collapsed');
+  $('sheetToggle').textContent = c ? 'Settings' : 'Hide'; $('sheetToggle').setAttribute('aria-expanded', !c);
+  setTimeout(resize, 0);
+};
+
+// ---------- Boot ----------
+new ResizeObserver(resize).observe($('mapwrap'));
+$('seed').value = S.seedText;
+try { spawnWorkers(); } catch (e) { setStatus('This browser blocked background workers, so the map cannot run here.'); }
+fillVersions();
+resetWorld();
+buildLayers();
+resize();
+})();
+</script>
+<script src="../lib/scene.js"></script>
+</body>
+</html>

@@ -36,13 +36,43 @@ public class ChunkHubClient implements ClientModInitializer {
 	private static final int FIRST_SYNC_TICKS = 20 * 10;      // ten seconds after joining
 	private static final int LIVE_EVERY_TICKS = 20 * 20;      // check for inventory/health changes every 20 seconds
 	private String lastLive = "";
+	private static final int PING_EVERY_TICKS = 20 * 10;      // check every 10 seconds whether Refresh was pressed on the website
+	private volatile boolean pinging = false;
 
 	private long ticks = 0;
 	private long joinedAt = -1;
 	private long pendingUpload = -1; // tick at which to read and upload the stats we asked for
 	private boolean notifyNext = false;
 	private JsonObject lastPayload = null; // kept so we can still send something as you leave
-	private JsonObject enderSnapshot = null; // what was in your ender chest the last time you opened it here
+	// what was in your ender chest the last time you opened it on each server (kept on disk, so it survives restarts)
+	private static final Map<String, JsonObject> ENDER = new java.util.concurrent.ConcurrentHashMap<>();
+	private static boolean enderLoaded = false;
+	private String enderSig = "";
+	private long liveSoon = -1;
+
+	private static Path enderFile() { return FabricLoader.getInstance().getConfigDir().resolve("chunkhub").resolve("ender.json"); }
+	private static JsonObject ender(String key) {
+		if (!enderLoaded) {
+			enderLoaded = true;
+			try {
+				Path f = enderFile();
+				if (Files.exists(f)) {
+					JsonObject all = JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
+					for (String k : all.keySet()) if (all.get(k).isJsonObject()) ENDER.put(k, all.getAsJsonObject(k));
+				}
+			} catch (Throwable t) { ChunkHub.LOG.debug("Couldn't read saved ender chests", t); }
+		}
+		return key == null ? null : ENDER.get(key);
+	}
+	private static void saveEnder(String key, JsonObject o) {
+		ender(null); ENDER.put(key, o);
+		try {
+			JsonObject all = new JsonObject();
+			for (Map.Entry<String, JsonObject> e : ENDER.entrySet()) all.add(e.getKey(), e.getValue());
+			Files.createDirectories(enderFile().getParent());
+			Files.writeString(enderFile(), all.toString(), StandardCharsets.UTF_8);
+		} catch (Throwable t) { ChunkHub.LOG.debug("Couldn't save the ender chest", t); }
+	}
 
 	@Override
 	public void onInitializeClient() {
@@ -56,7 +86,7 @@ public class ChunkHubClient implements ClientModInitializer {
 			.then(ClientCommands.literal("status").executes(c -> run(c.getSource(), "status", null)))
 			.then(ClientCommands.literal("unlink").executes(c -> run(c.getSource(), "unlink", null)))));
 
-		ClientPlayConnectionEvents.JOIN.register((listener, sender, mc) -> { joinedAt = ticks; lastPayload = null; enderSnapshot = null; });
+		ClientPlayConnectionEvents.JOIN.register((listener, sender, mc) -> { joinedAt = ticks; lastPayload = null; enderSig = ""; });
 		ClientPlayConnectionEvents.DISCONNECT.register((listener, mc) -> {
 			// send what we read most recently (the game clears your stats once you've left)
 			JsonObject p = lastPayload; lastPayload = null; joinedAt = -1; pendingUpload = -1;
@@ -70,9 +100,11 @@ public class ChunkHubClient implements ClientModInitializer {
 			if (key == null || ClientLinks.get(key) == null) return;
 			if (joinedAt >= 0 && ticks - joinedAt == FIRST_SYNC_TICKS) requestStats(mc, false);
 			else if (joinedAt >= 0 && ticks > joinedAt && (ticks - joinedAt) % SYNC_EVERY_TICKS == 0) requestStats(mc, false);
-			if (ticks % 20 == 0) watchEnderChest(mc);
+			if (ticks % 20 == 0) watchEnderChest(mc, key);
+			if (liveSoon >= 0 && ticks >= liveSoon && pendingUpload < 0) { liveSoon = -1; live(mc, key); }
 			if (pendingUpload >= 0 && ticks >= pendingUpload) { pendingUpload = -1; upload(mc, key, notifyNext); notifyNext = false; }
 			if (ticks % LIVE_EVERY_TICKS == 0 && pendingUpload < 0) live(mc, key);
+			if (ticks % PING_EVERY_TICKS == 0 && pendingUpload < 0) ping(mc, key);
 		});
 	}
 
@@ -130,6 +162,12 @@ public class ChunkHubClient implements ClientModInitializer {
 			case "status" -> {
 				if (link == null) src.sendFeedback(ChunkHub.msg("This server isn't linked. Get a code on chunkhub.net, World Stats, then use /chunkhub link CODE", ChatFormatting.WHITE));
 				else src.sendFeedback(ChunkHub.msg("Linked to chunkhub.net. " + (link.lastSync > 0 ? "Last sent " + Sync.ago(link.lastSync) + "." : "Not sent yet.") + " Stats are sent every 5 minutes and when you leave.", ChatFormatting.GREEN));
+				if (link != null) {
+					JsonObject e = ender(key);
+					src.sendFeedback(e == null
+						? ChunkHub.msg("Ender chest: not seen yet. Open your ender chest once on this server and it'll show on the website.", ChatFormatting.YELLOW)
+						: ChunkHub.msg("Ender chest: saved (" + e.getAsJsonArray("items").size() + " stacks).", ChatFormatting.GREEN));
+				}
 			}
 			case "unlink" -> {
 				if (link == null) { src.sendError(Component.literal("This server isn't linked.")); return 0; }
@@ -144,16 +182,25 @@ public class ChunkHubClient implements ClientModInitializer {
 	}
 
 	/** Servers don't tell you what's in your ender chest until you open it, so remember it whenever it's open. */
-	private void watchEnderChest(Minecraft mc) {
+	private void watchEnderChest(Minecraft mc, String serverKey) {
 		Object screen = field(mc, "screen");
 		if (screen == null) return;
 		Object title = call(screen, "getTitle");
 		Object key = call(call(title, "getContents"), "getKey");
-		if (!"container.enderchest".equals(key)) return;
+		String shown = title == null ? "" : String.valueOf(call(title, "getString")).toLowerCase();
+		if (!"container.enderchest".equals(key) && !shown.contains("ender chest") && !shown.contains("enderchest")) return;
 		Object menu = call(screen, "getMenu");
 		Object slots = field(menu, "slots");
 		if (slots instanceof java.util.List<?> list && list.size() >= 27) {
-			try { enderSnapshot = Snapshot.enderFromSlots(mc.player, list); } catch (Throwable t) { ChunkHub.LOG.debug("Couldn't read the ender chest", t); }
+			try {
+				JsonObject e = Snapshot.enderFromSlots(mc.player, list);
+				String sig = e.getAsJsonArray("items").toString();
+				if (!sig.equals(enderSig)) {
+					boolean first = enderSig.isEmpty();
+					enderSig = sig; saveEnder(serverKey, e);
+					liveSoon = ticks + (first ? 40 : 100); // send it shortly, once you've finished moving things
+				}
+			} catch (Throwable t) { ChunkHub.LOG.debug("Couldn't read the ender chest", t); }
 		}
 	}
 
@@ -176,13 +223,25 @@ public class ChunkHubClient implements ClientModInitializer {
 		pendingUpload = ticks + WAIT_FOR_STATS_TICKS;
 	}
 
+	/** Asks the website whether someone pressed Refresh; if so, sends everything now. */
+	private void ping(Minecraft mc, String key) {
+		ClientLinks.Link link = ClientLinks.get(key);
+		if (link == null || pinging) return;
+		pinging = true;
+		JsonObject body = new JsonObject(); body.addProperty("token", link.token);
+		Sync.post("/api/mod/ping", body).thenAccept(res -> mc.execute(() -> {
+			pinging = false;
+			if (res != null && res.has("refresh") && res.get("refresh").getAsBoolean() && mc.player != null) { lastLive = ""; requestStats(mc, false); }
+		}));
+	}
+
 	/** Sends just your health, hunger, XP and inventories, and only when they've changed. */
 	private void live(Minecraft mc, String key) {
 		ClientLinks.Link link = ClientLinks.get(key);
 		if (link == null || mc.player == null) return;
 		JsonObject extra = new JsonObject();
 		try { extra.add("player", Snapshot.player(mc.player)); } catch (Throwable t) { return; }
-		if (enderSnapshot != null) extra.add("ender", enderSnapshot);
+		{ JsonObject e = ender(key); if (e != null) extra.add("ender", e); }
 		JsonObject cmp = extra.deepCopy(); cmp.getAsJsonObject("player").remove("at");
 		String sig = cmp.toString();
 		if (sig.equals(lastLive)) return;
@@ -207,7 +266,7 @@ public class ChunkHubClient implements ClientModInitializer {
 		if (adv != null) body.add("advancements", adv);
 		JsonObject extra = new JsonObject();
 		try { extra.add("player", Snapshot.player(mc.player)); } catch (Throwable t) { ChunkHub.LOG.warn("Couldn't read your inventory", t); }
-		if (enderSnapshot != null) extra.add("ender", enderSnapshot);
+		{ JsonObject e = ender(key); if (e != null) extra.add("ender", e); }
 		extra.addProperty("source", "client");
 		extra.addProperty("server", serverLabel(mc));
 		extra.addProperty("sent_at", System.currentTimeMillis());
