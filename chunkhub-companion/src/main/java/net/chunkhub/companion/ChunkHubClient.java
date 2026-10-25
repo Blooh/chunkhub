@@ -224,6 +224,13 @@ public class ChunkHubClient implements ClientModInitializer {
 				if (id == null) continue;
 				JsonObject o = new JsonObject();
 				o.addProperty("done", Boolean.TRUE.equals(done));
+				// the parts already done (e.g. each biome for Adventuring Time), so the website can tick them off
+				Object crit = call(e.getValue(), "getCompletedCriteria");
+				if (crit instanceof Iterable<?> it) {
+					JsonObject c = new JsonObject();
+					for (Object name : it) if (name != null) c.addProperty(name.toString(), "done");
+					if (c.size() > 0) o.add("criteria", c);
+				}
 				out.add(id.toString(), o);
 			}
 			return out;
