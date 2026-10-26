@@ -189,6 +189,7 @@ async function handleMod(request, url, env) {
     if (!r) return json({ ok: false, error: 'The website couldn’t save this sync. It will try again later.' });
     return json(r);
   }
+  if (path === 'ping') { const r = await supa(env, 'mod_ping', { p_token_hash: hash }); return json(r || { ok: false }); }
   if (path === 'unlink') { const r = await supa(env, 'mod_unlink', { p_token_hash: hash }); return json(r || { ok: false }); }
   return json({ ok: false, error: 'not found' }, 404);
 }

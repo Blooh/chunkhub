@@ -352,6 +352,11 @@ button.adv-head { cursor: pointer; }
 .wname { display: inline-flex; align-items: center; gap: 8px; }
 .kind { display: inline-grid; place-items: center; color: var(--muted); flex: none; }
 .w-title { justify-content: space-between; }
+.w-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.w-acts .btn2[disabled] { opacity: .6; cursor: progress; }
+.refresh-note { margin: 6px 0 0; min-height: 0; }
+.refresh-note:empty { display: none; }
+.refresh-note.ok { color: #3fbf6a; }
 .danger-link { background: none; border: 0; color: var(--accent); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0; }
 .empty { color: var(--muted); padding: 10px 0; }
 .live-line { display: flex; align-items: center; gap: 8px; margin: 0; }
@@ -782,6 +787,24 @@ async function rename(w) {
   w.display_name = name; render();
 }
 
+// Refresh: ask the game (through the mod) to send everything now, then wait for it to arrive
+let refreshing = null;
+async function refreshWorld(w) {
+  if (refreshing) return;
+  refreshing = { id: w.id, msg: 'Asking your game…' }; render();
+  const done = (msg, ok) => { refreshing = null; render(); const n = document.getElementById('refreshNote'); if (n) { n.textContent = msg; n.className = 'note2 refresh-note' + (ok ? ' ok' : ''); } };
+  const { data, error } = await sb.rpc('request_refresh', { p_world: w.id });
+  if (error) { done('Couldn’t ask the game. If you just updated the site, run the latest World Stats SQL in Supabase. (' + error.message + ')'); return; }
+  if (data && data.ok === false) { done('That world wasn’t found.'); return; }
+  const was = w.last_sync, start = Date.now();
+  while (Date.now() - start < 60000) {
+    await new Promise(r => setTimeout(r, 3000));
+    const { data: row } = await sb.from('mc_worlds').select('id,world_name,display_name,player_name,player_uuid,mc_version,mod_version,last_sync,created_at,stats,advancements,extra').eq('id', w.id).maybeSingle();
+    if (row && row.last_sync !== was) { Object.assign(w, row); done('Updated just now.', true); return; }
+  }
+  done('No answer from the game. Make sure Minecraft is open in this ' + (isServer(w) ? 'server' : 'world') + ' with the latest Chunk Hub Companion (1.2.0 or newer).');
+}
+
 // ---------- Player tab: skin, name, UUID, health, hunger, XP, inventory and ender chest ----------
 const HEART = '<svg viewBox="0 0 9 9" aria-hidden="true"><path d="M1 1h3v1h1V1h3v1h1v3H8v1H7v1H6v1H5v1H4V8H3V7H2V6H1V5H0V2h1z" fill="#2a0d0d"/><path d="M1 2h2v1h1v1h1V3h1V2h2v3H7v1H6v1H5v1H4V7H3V6H2V5H1z" fill="currentColor"/><path d="M2 2h1v1H2z" fill="#fff" opacity=".7"/></svg>';
 const SHANK = '<svg viewBox="0 0 9 9" aria-hidden="true"><path d="M5 0h3v1h1v3H8v1H7v1H6v1H5v1H3v1H1V8H0V6h1V5h1V4h1V3h1V1h1z" fill="#2b1a0d"/><path d="M5 1h3v3H7v1H6v1H5v1H3V5H2V4h1V3h1V2h1z" fill="currentColor"/><path d="M1 6h1v1h1v1H1z" fill="#e8e0d0"/></svg>';
@@ -989,8 +1012,9 @@ function worldView(w) {
   const advMain = adv.length;
   const tile = (k, v, s) => h('div', { class: 'tile' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, v), s ? h('span', { class: 's' }, s) : null);
   const head = h('div', { class: 'panel-box ws-sec' },
-    h('div', { class: 'w-title' }, h('h2', { class: 'wname' }, kindIcon(w), nameOf(w)), h('button', { type: 'button', class: 'btn2', onclick: () => rename(w) }, 'Rename')),
-    h('p', { class: 'w-meta' }, (isServer(w) ? 'Multiplayer server · ' : 'Single-player world · ') + (w.player_name || 'Player') + ' · ' + (w.mc_version || 'Minecraft') + ' · last synced ' + ago(w.last_sync) + '. Stats update every 5 minutes while you play, and when you leave the world.'),
+    h('div', { class: 'w-title' }, h('h2', { class: 'wname' }, kindIcon(w), nameOf(w)), h('div', { class: 'w-acts' }, h('button', { type: 'button', class: 'btn2', disabled: refreshing ? true : null, onclick: () => refreshWorld(w), title: 'Ask the game to send your stats and inventory now' }, refreshing && refreshing.id === w.id ? 'Refreshing…' : '↻ Refresh'), h('button', { type: 'button', class: 'btn2', onclick: () => rename(w) }, 'Rename'))),
+    h('p', { class: 'note2 refresh-note', id: 'refreshNote' }, refreshing && refreshing.id === w.id ? refreshing.msg : ''),
+    h('p', { class: 'w-meta' }, (isServer(w) ? 'Multiplayer server · ' : 'Single-player world · ') + (w.player_name || 'Player') + ' · ' + (w.mc_version || 'Minecraft') + ' · last synced ' + ago(w.last_sync) + '. Stats update every 5 minutes while you play and when you leave. Press Refresh to get them now.'),
     h('div', { class: 'tiles', style: 'margin-top:14px' },
       tile('Time played', fmtTime(g('play_time'))), tile('Deaths', nf(g('deaths'))), tile('Mob kills', nf(g('mob_kills'))),
       tile('Distance travelled', fmtDist(dist)), tile('Blocks mined', nf(sum(S['minecraft:mined']))), tile('Items crafted', nf(sum(S['minecraft:crafted']))),
