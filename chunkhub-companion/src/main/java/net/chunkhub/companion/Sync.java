@@ -54,16 +54,42 @@ final class Sync {
 		body.addProperty("name", p.getName().getString());
 		body.addProperty("mc", mcVersion());
 		body.addProperty("mod", modVersion());
-		post("/api/mod/link", body).thenAccept(res -> server.execute(() -> {
+		Verify.join(id).thenCompose(v -> {
+			if (v.ok()) body.addProperty("verify", v.serverId());
+			return post("/api/mod/link", body).thenAccept(res -> server.execute(() -> linked(server, id, res, v)));
+		});
+	}
+
+	private static void linked(MinecraftServer server, UUID id, JsonObject res, Verify.Result v) {
+		{
 			if (res != null && res.has("ok") && res.get("ok").getAsBoolean()) {
 				Links.put(server, id, res.get("token").getAsString(), res.has("world_id") ? res.get("world_id").getAsString() : "");
 				tell(server, id, "Linked! This world now shows on chunkhub.net under World Stats. Sending your stats…", ChatFormatting.GREEN);
+				boolean ok = res.has("verified") && res.get("verified").getAsBoolean();
+				tell(server, id, Verify.explain(res, v), ok ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
 				ServerPlayer again = server.getPlayerList().getPlayer(id);
 				if (again != null) sync(server, again, "linked", id);
 			} else {
 				tell(server, id, errorText(res, "Couldn't link this world. Check the code and try again."), ChatFormatting.RED);
 			}
-		}));
+		}
+	}
+
+	/** /chunkhub verify: prove the linked player owns an official Minecraft account. */
+	static void verify(MinecraftServer server, ServerPlayer p) {
+		UUID id = p.getUUID();
+		Links.Link l = Links.get(server, id);
+		if (l == null) return;
+		String name = p.getName().getString();
+		tell(server, id, "Checking your Minecraft account with Mojang…", ChatFormatting.GRAY);
+		Verify.join(id).thenCompose(v -> {
+			JsonObject body = new JsonObject(); body.addProperty("token", l.token); body.addProperty("name", name);
+			if (v.ok()) body.addProperty("verify", v.serverId());
+			return post("/api/mod/verify", body).thenAccept(res -> server.execute(() -> {
+				boolean ok = res != null && res.has("verified") && res.get("verified").getAsBoolean();
+				tell(server, id, Verify.explain(res, v), ok ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
+			}));
+		});
 	}
 
 	static void unlink(MinecraftServer server, ServerPlayer p) {
@@ -89,8 +115,7 @@ final class Sync {
 		try {
 			JsonObject extra = body.getAsJsonObject("extra");
 			extra.add("player", Snapshot.player(p));
-			JsonObject ender = Snapshot.enderFromPlayer(p);
-			if (ender != null) extra.add("ender", ender);
+
 		} catch (Throwable t) { ChunkHub.LOG.warn("Couldn't read the player's inventory", t); }
 		send(server, p.getUUID(), body, notify, false);
 	}
@@ -121,14 +146,11 @@ final class Sync {
 		JsonObject extra = new JsonObject();
 		try {
 			extra.add("player", Snapshot.player(p));
-			JsonObject ender = Snapshot.enderFromPlayer(p);
-			if (ender != null) { ender.remove("seen"); extra.add("ender", ender); }
 		} catch (Throwable t) { return; }
 		JsonObject cmp = extra.deepCopy(); cmp.getAsJsonObject("player").remove("at");
 		String sig = cmp.toString();
 		if (sig.equals(LAST_LIVE.get(p.getUUID()))) return;
 		LAST_LIVE.put(p.getUUID(), sig);
-		if (extra.has("ender")) extra.getAsJsonObject("ender").addProperty("seen", System.currentTimeMillis());
 		JsonObject body = new JsonObject();
 		body.addProperty("token", l.token);
 		body.add("extra", extra);

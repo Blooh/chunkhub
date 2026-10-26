@@ -19,7 +19,7 @@ import java.util.List;
 final class Snapshot {
 	private Snapshot() {}
 
-	/** Health, hunger, XP and the main inventory (hotbar, backpack, armour, off-hand). */
+	/** Health, hunger, XP and coordinates. */
 	static JsonObject player(Object player) {
 		JsonObject o = new JsonObject();
 		num(o, "health", Reflect.call(player, "getHealth"));
@@ -32,13 +32,31 @@ final class Snapshot {
 		num(o, "xpProgress", field(player, "experienceProgress"));
 		num(o, "xpTotal", field(player, "totalExperience"));
 		num(o, "armor", Reflect.call(player, "getArmorValue"));
-		Object inv = Reflect.call(player, "getInventory");
-		Object sel = Reflect.call(inv, "getSelectedSlot");
-		if (sel == null) sel = field(inv, "selected");
-		num(o, "selected", sel);
-		o.add("inventory", container(player, inv, 41));
+		// where you are: block coordinates and dimension
+		Object x = Reflect.call(player, "getX"), y = Reflect.call(player, "getY"), z = Reflect.call(player, "getZ");
+		if (x instanceof Number && y instanceof Number && z instanceof Number) {
+			JsonArray pos = new JsonArray();
+			pos.add(Math.floor(((Number) x).doubleValue())); pos.add(Math.floor(((Number) y).doubleValue())); pos.add(Math.floor(((Number) z).doubleValue()));
+			o.add("pos", pos);
+		}
+		String dim = dimension(player);
+		if (dim != null) o.addProperty("dim", dim);
 		o.addProperty("at", System.currentTimeMillis());
 		return o;
+	}
+
+	/** "minecraft:overworld", "minecraft:the_nether", "minecraft:the_end" or a modded dimension. */
+	private static String dimension(Object player) {
+		Object level = Reflect.call(player, "level");
+		if (level == null) level = field(player, "level");
+		Object key = Reflect.call(level, "dimension");
+		if (key == null) return null;
+		Object id = Reflect.call(key, "location");
+		if (id == null) id = Reflect.call(key, "identifier");
+		if (id != null) return id.toString();
+		// ResourceKey[minecraft:dimension / minecraft:overworld]
+		String s = key.toString(); int i = s.lastIndexOf(" / ");
+		return i >= 0 ? s.substring(i + 3).replace("]", "").trim() : null;
 	}
 
 	/** The player's ender chest, read directly (only works where the ender chest is known, i.e. on the server side). */

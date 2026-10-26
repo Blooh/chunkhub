@@ -108,6 +108,7 @@ public class ChunkHub implements ModInitializer {
 					.executes(c -> link(c.getSource(), StringArgumentType.getString(c, "code")))))
 			.then(Commands.literal("sync").executes(c -> syncNow(c.getSource())))
 			.then(Commands.literal("status").executes(c -> status(c.getSource())))
+			.then(Commands.literal("verify").executes(c -> verify(c.getSource())))
 			.then(Commands.literal("unlink").executes(c -> unlink(c.getSource()))));
 	}
 
@@ -120,6 +121,7 @@ public class ChunkHub implements ModInitializer {
 		src.sendSuccess(() -> Component.literal("  /chunkhub link CODE").withStyle(ChatFormatting.YELLOW).append(Component.literal("  link this world (get a code on the World Stats page)").withStyle(ChatFormatting.GRAY)), false);
 		src.sendSuccess(() -> Component.literal("  /chunkhub sync").withStyle(ChatFormatting.YELLOW).append(Component.literal("  send your latest stats now").withStyle(ChatFormatting.GRAY)), false);
 		src.sendSuccess(() -> Component.literal("  /chunkhub status").withStyle(ChatFormatting.YELLOW).append(Component.literal("  check whether this world is linked").withStyle(ChatFormatting.GRAY)), false);
+		src.sendSuccess(() -> Component.literal("  /chunkhub verify").withStyle(ChatFormatting.YELLOW).append(Component.literal("  prove this is your official Minecraft account").withStyle(ChatFormatting.GRAY)), false);
 		src.sendSuccess(() -> Component.literal("  /chunkhub unlink").withStyle(ChatFormatting.YELLOW).append(Component.literal("  stop sending this world's stats").withStyle(ChatFormatting.GRAY)), false);
 		return 1;
 	}
@@ -148,6 +150,14 @@ public class ChunkHub implements ModInitializer {
 		Links.Link l = Links.get(src.getServer(), p.getUUID());
 		if (l == null) src.sendSuccess(() -> msg("This world isn't linked. Get a code on chunkhub.net, World Stats, then use /chunkhub link CODE", ChatFormatting.WHITE), false);
 		else src.sendSuccess(() -> msg("Linked to chunkhub.net. " + (l.lastSync > 0 ? "Last sent " + Sync.ago(l.lastSync) + "." : "Not sent yet.") + " Stats are sent every 5 minutes and when you leave.", ChatFormatting.GREEN), false);
+		return 1;
+	}
+
+	private int verify(CommandSourceStack src) {
+		ServerPlayer p = src.getPlayer();
+		if (p == null) { src.sendFailure(Component.literal("Run this as a player.")); return 0; }
+		if (Links.get(src.getServer(), p.getUUID()) == null) { src.sendFailure(Component.literal("Link this world first: get a code on chunkhub.net and use /chunkhub link CODE")); return 0; }
+		Sync.verify(src.getServer(), p);
 		return 1;
 	}
 
